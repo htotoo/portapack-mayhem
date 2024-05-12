@@ -80,6 +80,10 @@ set(EXTCPPSRC
 	#tpmsrx
 	external/tpmsrx/main.cpp
 	external/tpmsrx/tpms_app.cpp
+
+	#wefaxrx
+	external/wefaxrx/main.cpp
+	external/wefaxrx/ui_wefax_rx.cpp
 )
 
 set(EXTAPPLIST
@@ -102,4 +106,5 @@ set(EXTAPPLIST
 	audio_test
 	wardrivemap
 	tpmsrx
+	wefaxrx
 )

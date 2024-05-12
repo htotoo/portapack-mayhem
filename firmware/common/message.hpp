@@ -124,6 +124,9 @@ class Message {
         AudioBeep = 66,
         PocsagTosend = 67,
         BatteryStateData = 68,
+        WeFaxRxConfigure = 69,
+        WeFaxRxStatusData = 70,
+        WeFaxRxImageData = 71,
         MAX
     };
 
@@ -1424,6 +1427,36 @@ class BatteryStateMessage : public Message {
     uint8_t percent = 0;
     bool on_charger = false;
     uint16_t voltage = 0;  // mV
+};
+
+class WeFaxRxConfigureMessage : public Message {
+   public:
+    constexpr WeFaxRxConfigureMessage(uint8_t lpm, uint8_t ioc)
+        : Message{ID::WeFaxRxConfigure},
+          lpm{lpm},
+          ioc{ioc} {
+    }
+    uint8_t lpm = 120;
+    uint8_t ioc = 0;
+};
+
+class WeFaxRxStatusDataMessage : public Message {
+   public:
+    constexpr WeFaxRxStatusDataMessage(uint8_t state, uint32_t tmp)
+        : Message{ID::WeFaxRxStatusData},
+          state{state},
+          tmp{tmp} {
+    }
+    uint8_t state = 0;
+    uint32_t tmp = 0;
+};
+
+class WeFaxRxImageDataMessage : public Message {
+   public:
+    constexpr WeFaxRxImageDataMessage()
+        : Message{ID::WeFaxRxImageData} {}
+    uint8_t image[400]{0};
+    uint32_t cnt = 0;
 };
 
 #endif /*__MESSAGE_H__*/

@@ -631,6 +631,15 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PSPT spectrum_painter)
 
+### WeFax painter
+
+set(MODE_CPPSRC
+	proc_wefaxrx.cpp
+)
+DeclareTargets(PWFX wefax_rx)
+
+
+
 ### Test
 
 set(MODE_CPPSRC
