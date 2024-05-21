@@ -92,7 +92,7 @@ void WeFaxRx::on_message(const Message* const message) {
 }
 
 void WeFaxRx::configure(const WeFaxRxConfigureMessage& message) {
-    /* constexpr size_t decim_0_input_fs = baseband_fs;
+    constexpr size_t decim_0_input_fs = baseband_fs;
     constexpr size_t decim_0_output_fs = decim_0_input_fs / decim_0.decimation_factor;
 
     constexpr size_t decim_1_input_fs = decim_0_output_fs;
@@ -103,7 +103,6 @@ void WeFaxRx::configure(const WeFaxRxConfigureMessage& message) {
 
     constexpr size_t channel_filter_input_fs = decim_2_output_fs;
     const size_t channel_filter_output_fs = channel_filter_input_fs / 1;  // 12000ul
-    */
 
     lpm = message.lpm;
     ioc_mode = message.ioc;
@@ -112,7 +111,7 @@ void WeFaxRx::configure(const WeFaxRxConfigureMessage& message) {
     decim_1.configure(taps_6k0_decim_1.taps);
     decim_2.configure(taps_6k0_decim_2.taps, 4);
     channel_filter.configure(taps_2k8_usb_channel.taps, 1);
-
+    demod.configure(channel_filter_output_fs, 6000);
     audio_output.configure(audio_24k_hpf_300hz_config, audio_24k_deemph_300_6_config, 0);
     configured = true;
 }

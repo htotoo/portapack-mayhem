@@ -74,7 +74,7 @@ class WeFaxRx : public BasebandProcessor {
         audio.data(),
         audio.size()};
 
-    dsp::demodulate::SSB demod{};
+    dsp::demodulate::FM demod{};
     AudioOutput audio_output{};
     dsp::decimate::FIRC8xR16x24FS4Decim8 decim_0{};
     dsp::decimate::FIRC16xR16x32Decim8 decim_1{};
