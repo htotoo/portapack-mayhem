@@ -82,8 +82,8 @@ class WeFaxRxView : public View {
         nav_};
 
     Labels labels{
-        {{1 * 8, 1 * 16}, "LPM:", Color::light_grey()},
-        {{13 * 8, 1 * 16}, "IOC:", Color::light_grey()},
+        {{1 * 8, 1 * 16}, "LPM:", Theme::getInstance()->fg_light->foreground},
+        {{13 * 8, 1 * 16}, "IOC:", Theme::getInstance()->fg_light->foreground},
     };
 
     OptionsField options_lpm{
