@@ -1442,20 +1442,23 @@ class WeFaxRxConfigureMessage : public Message {
 
 class WeFaxRxStatusDataMessage : public Message {
    public:
-    constexpr WeFaxRxStatusDataMessage(uint8_t state, uint32_t tmp)
+    constexpr WeFaxRxStatusDataMessage(uint8_t state, int32_t freq)
         : Message{ID::WeFaxRxStatusData},
           state{state},
-          tmp{tmp} {
+          freq{freq} {
     }
     uint8_t state = 0;
-    uint32_t tmp = 0;
+    int32_t freq = 0;
+    int32_t freqmin = 0;
+    int32_t freqmax = 0;
+    int32_t freqavg = 0;
 };
 
 class WeFaxRxImageDataMessage : public Message {
    public:
     constexpr WeFaxRxImageDataMessage()
         : Message{ID::WeFaxRxImageData} {}
-    uint8_t image[400]{0};
+    uint8_t image[480]{0};
     uint32_t cnt = 0;
 };
 

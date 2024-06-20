@@ -43,11 +43,13 @@ class WeFaxRx : public BasebandProcessor {
    private:
     void configure(const WeFaxRxConfigureMessage& message);
     void update_params();
+    double calculateFrequencyDeviation(complex16_t& iq, complex16_t& iqlast);
+    double calculatePhaseAngle(int16_t i, int16_t q);
     // todo rethink
     uint8_t lpm = 120;     // 60, 90, 100, 120, 180, 240 lpm
     uint8_t ioc_mode = 0;  // 0 - ioc576, 1 - ioc 288, 2 - colour fax
     uint32_t time_per_pixel = 595;
-    uint32_t samples_per_pixel = 0;   // todo
+    uint32_t samples_per_pixel = 0;
     uint32_t time_start_tone = 3000;  // 3s - 5s
     uint32_t freq_start_tone = 300;   // 300hz for ioc576 675hz for ioc288, 200hz for colour fax
     uint32_t freq_stop_tone = 450;    // 450hz for the 3-5s stop tone
@@ -56,14 +58,25 @@ class WeFaxRx : public BasebandProcessor {
     uint16_t freq_px_max = 2300;      // white
     uint16_t freq_px_min = 1500;      // black
 
-    float last_sig = 0;
+    double pxRem = 0;   // if has remainder, it'll store it
+    double pxRoll = 0;  // summs remainders, so won't misalign
+    // float last_sig = 0;
     uint32_t wcnt = 0;
     uint32_t cnt = 0;
 
     static constexpr size_t baseband_fs = 3072000;
-    static constexpr size_t audio_fs = baseband_fs / 8 / 8 / 2;
+    size_t decim_0_input_fs = 0;
+    size_t decim_0_output_fs = 0;
+    size_t decim_1_input_fs = 0;
+    size_t decim_1_output_fs = 0;
+    size_t decim_2_input_fs = 0;
+    size_t decim_2_output_fs = 0;
+    size_t channel_filter_input_fs = 0;
+    size_t channel_filter_output_fs = 0;
 
     bool configured{false};
+
+    complex16_t iqlast = 0;
 
     std::array<complex16_t, 512> dst{};
     const buffer_c16_t dst_buffer{

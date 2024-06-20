@@ -3,7 +3,7 @@
  *
  * This file is part of PortaPack.
  *
- * This program is free software; you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or  modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
@@ -68,7 +68,7 @@ WeFaxRxView::WeFaxRxView(NavigationView& nav)
     options_lpm.set_selected_index(lpm_index, false);
     options_ioc.set_selected_index(ioc_index, true);
 
-    field_frequency.set_step(100);
+    field_frequency.set_step(10);
     audio::set_rate(audio::Rate::Hz_24000);
     audio::output::start();
     receiver_model.enable();
@@ -86,17 +86,19 @@ void WeFaxRxView::on_settings_changed() {
 }
 
 void WeFaxRxView::on_status(WeFaxRxStatusDataMessage msg) {
-    txt_status.set(to_string_dec_int(msg.tmp));
+    std::string tmp = to_string_dec_int(msg.freq) + " " + to_string_dec_int(msg.freqavg) + " " + to_string_dec_int(msg.freqmin) + " " + to_string_dec_int(msg.freqmax);
+    txt_status.set(tmp);
 }
 
 void WeFaxRxView::on_image(WeFaxRxImageDataMessage msg) {
     line_num++;
-    if (line_num >= 320 - 3 * 16) line_num = 0;
+    if (line_num >= 320 - 4 * 16) line_num = 0;
     ui::Color line_buffer[240];
-    for (uint16_t i = 0; i < 240; i++) {
-        line_buffer[i] = msg.image[i] ? Color::white() : Color::black();
+    for (uint16_t i = 0; i < 480; i += 2) {
+        uint8_t px = (msg.image[i] + msg.image[i + 1]) / 2;
+        line_buffer[i / 2] = {px, px, px};
     }
-    portapack::display.render_line({0, line_num + 3 * 16}, 240, line_buffer);
+    portapack::display.render_line({0, line_num + 4 * 16}, 240, line_buffer);
 }
 
 }  // namespace ui::external_app::wefax_rx

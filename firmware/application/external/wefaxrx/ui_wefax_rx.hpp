@@ -55,6 +55,7 @@ class WeFaxRxView : public View {
     uint8_t ioc_index{0};
     uint8_t lpm_index{0};
     uint16_t line_num = 0;
+    uint8_t txtDec = 0;
 
     NavigationView& nav_;
     RxRadioState radio_state_{};
