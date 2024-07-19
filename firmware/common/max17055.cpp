@@ -31,7 +31,8 @@ namespace max17055 {
 void MAX17055::init() {
     if (!detected_) {
         detected_ = detect();
-    } else {
+    }
+    if (detected_) {  // check again if it is detected
         config();
         setHibCFG(0x0000);
 
@@ -153,10 +154,23 @@ bool MAX17055::writeMultipleRegister(uint8_t reg, const uint8_t* data, uint8_t l
     return false;
 }
 
-void MAX17055::getBatteryInfo(uint8_t& batteryPercentage, uint16_t& voltage, int32_t& current) {
-    voltage = averageVoltage();
-    batteryPercentage = stateOfCharge();
-    current = instantCurrent();
+void MAX17055::getBatteryInfo(uint8_t& valid_mask, uint8_t& batteryPercentage, uint16_t& voltage, int32_t& current) {
+    if (detected_) {
+        uint16_t status = 0;
+        // Read Status Register
+        readMultipleRegister(0x00, (uint8_t*)&status, 2, false);
+        voltage = averageVoltage();
+        if ((status == 0 && voltage == 0) || (status == 0x0002 && voltage == 3600) || (status == 0x0002 && voltage == 0)) {
+            valid_mask = 0;
+            return;
+        }
+        batteryPercentage = stateOfCharge();
+        current = instantCurrent();
+        valid_mask = 3;  // BATT_VALID_VOLTAGE + CURRENT
+    } else {
+        // let's indicate the data is wrong. ui will handle this by display UNK values.
+        valid_mask = 0;
+    }
 }
 
 bool MAX17055::setEmptyVoltage(uint16_t _Empty_Voltage) {
@@ -323,6 +337,60 @@ bool MAX17055::setDesignCapacity(const uint16_t _Capacity) {
 
     // Set Register
     bool _Result = writeMultipleRegister(0x18, _Data, 2);
+
+    // End Function
+    return _Result;
+}
+
+bool MAX17055::setFullCapRep(const uint16_t _Capacity) {
+    // Set Raw
+    uint16_t _Raw_Cap = (uint16_t)_Capacity * 2;
+
+    // Declare Default Data Array
+    uint8_t _Data[2];
+
+    // Set Data Low/High Byte
+    _Data[0] = ((_Raw_Cap & (uint16_t)0x00FF));
+    _Data[1] = ((_Raw_Cap & (uint16_t)0xFF00) >> 8);
+
+    // Set Register
+    bool _Result = writeMultipleRegister(0x10, _Data, 2);
+
+    // End Function
+    return _Result;
+}
+
+bool MAX17055::setFullCapNom(const uint16_t _Capacity) {
+    // Set Raw
+    uint16_t _Raw_Cap = (uint16_t)_Capacity * 2;
+
+    // Declare Default Data Array
+    uint8_t _Data[2];
+
+    // Set Data Low/High Byte
+    _Data[0] = ((_Raw_Cap & (uint16_t)0x00FF));
+    _Data[1] = ((_Raw_Cap & (uint16_t)0xFF00) >> 8);
+
+    // Set Register
+    bool _Result = writeMultipleRegister(0x23, _Data, 2);
+
+    // End Function
+    return _Result;
+}
+
+bool MAX17055::setRepCap(const uint16_t _Capacity) {
+    // Set Raw
+    uint16_t _Raw_Cap = (uint16_t)_Capacity * 2;
+
+    // Declare Default Data Array
+    uint8_t _Data[2];
+
+    // Set Data Low/High Byte
+    _Data[0] = ((_Raw_Cap & (uint16_t)0x00FF));
+    _Data[1] = ((_Raw_Cap & (uint16_t)0xFF00) >> 8);
+
+    // Set Register
+    bool _Result = writeMultipleRegister(0x05, _Data, 2);
 
     // End Function
     return _Result;
@@ -553,7 +621,7 @@ int32_t MAX17055::instantCurrent(void) {
     // Convert to signed int16_t (two's complement)
     int32_t _Signed_Raw = static_cast<int16_t>(_Measurement_Raw);
 
-    int32_t _Value = (_Signed_Raw * 15625) / (__MAX17055_Resistor__ * 100);
+    int32_t _Value = (_Signed_Raw * 15625) / (__MAX17055_Resistor__ * 100) / 100000;
 
     // End Function
     return _Value;
@@ -566,7 +634,7 @@ int32_t MAX17055::averageCurrent(void) {
     // Convert to signed int16_t (two's complement)
     int32_t _Signed_Raw = static_cast<int16_t>(_Measurement_Raw);
 
-    int32_t _Value = (_Signed_Raw * 15625) / (__MAX17055_Resistor__ * 100);
+    int32_t _Value = (_Signed_Raw * 15625) / (__MAX17055_Resistor__ * 100) / 100000;
 
     // End Function
     return _Value;

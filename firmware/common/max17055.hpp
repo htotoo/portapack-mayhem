@@ -47,7 +47,7 @@
 
 // Define Battery Capacity
 #ifndef __MAX17055_Design_Capacity__
-#define __MAX17055_Design_Capacity__ 1500  // Battery Capacity
+#define __MAX17055_Design_Capacity__ 2500  // Battery Capacity
 #endif
 
 // Define Gauge Resistor
@@ -62,7 +62,7 @@
 
 // Define Maximum Voltage
 #ifndef __MAX17055_Max_Voltage__
-#define __MAX17055_Max_Voltage__ 4.2  // Maximum Voltage
+#define __MAX17055_Max_Voltage__ 4.17  // Maximum Voltage
 #endif
 
 // Define Empty Voltage
@@ -72,7 +72,7 @@
 
 // Define Recovery Voltage
 #ifndef __MAX17055_Recovery_Voltage__
-#define __MAX17055_Recovery_Voltage__ 3.7  // Recovery Voltage
+#define __MAX17055_Recovery_Voltage__ 3.1  // Recovery Voltage
 #endif
 
 // Define Maximum Current
@@ -105,12 +105,12 @@
 
 // Define Minimum SOC
 #ifndef __MAX17055_Min_SOC__
-#define __MAX17055_Min_SOC__ 20  // Minimum SOC
+#define __MAX17055_Min_SOC__ 0  // Minimum SOC
 #endif
 
 // Define Maximum SOC
 #ifndef __MAX17055_Max_SOC__
-#define __MAX17055_Max_SOC__ 90  // Maximum SOC
+#define __MAX17055_Max_SOC__ 100  // Maximum SOC
 #endif
 
 // Config1 (0x1D) Configuration
@@ -263,7 +263,7 @@ class MAX17055 {
 
     uint16_t readVoltage();
     uint8_t readPercentage();
-    void getBatteryInfo(uint8_t& batteryPercentage, uint16_t& voltage, int32_t& current);
+    void getBatteryInfo(uint8_t& valid_mask, uint8_t& batteryPercentage, uint16_t& voltage, int32_t& current);
 
     uint16_t instantVoltage(void);
     uint16_t averageVoltage(void);
@@ -290,7 +290,7 @@ class MAX17055 {
    private:
     I2C& bus;
     const I2C::address_t bus_address;
-    bool detected_;
+    bool detected_ = false;
 
     bool readRegister(uint8_t reg, uint16_t& value);
     bool readMultipleRegister(uint8_t reg, uint8_t* data, uint8_t length, bool endTransmission);
@@ -303,6 +303,9 @@ class MAX17055 {
     bool setMaxCurrent(uint16_t _Maximum_Current);
     bool setChargeTerminationCurrent(uint16_t _Charge_Termination_Current);
     bool setDesignCapacity(const uint16_t _Capacity);
+    bool setFullCapRep(const uint16_t _Capacity);
+    bool setFullCapNom(const uint16_t _Capacity);
+    bool setRepCap(const uint16_t _Capacity);
     bool setMinSOC(uint8_t _Minimum_SOC);
     bool setMaxSOC(uint8_t _Maximum_SOC);
     bool setMinTemperature(uint8_t _Minimum_Temperature);
