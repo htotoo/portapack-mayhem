@@ -42,7 +42,8 @@ MEMORY
     ram_external_app_audio_test(rwx) : org = 0xADC10000, len = 32k
     ram_external_app_wardrivemap(rwx) : org = 0xADC20000, len = 32k
     ram_external_app_tpmsrx(rwx) : org = 0xADC30000, len = 32k
-    ram_external_app_wefaxrx(rwx) : org = 0xADC40000, len = 32k
+    ram_external_app_protoview(rwx) : org = 0xADC40000, len = 32k
+    ram_external_app_wefaxrx(rwx) : org = 0xADC50000, len = 32k
 }
 
 SECTIONS
@@ -166,5 +167,13 @@ SECTIONS
         KEEP(*(.external_app.app_wefax_rx.application_information));
         *(*ui*external_app*wefax_rx*);
     } > ram_external_app_wefaxrx
+
+
+   .external_app_protoview : ALIGN(4) SUBALIGN(4)
+    {
+        KEEP(*(.external_app.app_protoview.application_information));
+        *(*ui*external_app*protoview*);
+    } > ram_external_app_protoview
+
 
 }

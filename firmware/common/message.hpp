@@ -124,9 +124,11 @@ class Message {
         AudioBeep = 66,
         PocsagTosend = 67,
         BatteryStateData = 68,
-        WeFaxRxConfigure = 69,
-        WeFaxRxStatusData = 70,
-        WeFaxRxImageData = 71,
+        ProtoViewData = 69,
+        WeFaxRxConfigure = 70,
+        WeFaxRxStatusData = 71,
+        WeFaxRxImageData = 72,
+
         MAX
     };
 
@@ -1460,6 +1462,15 @@ class WeFaxRxImageDataMessage : public Message {
         : Message{ID::WeFaxRxImageData} {}
     uint8_t image[480]{0};
     uint32_t cnt = 0;
+};
+
+class ProtoViewDataMessage : public Message {
+   public:
+    constexpr ProtoViewDataMessage()
+        : Message{ID::ProtoViewData} {}
+    int32_t times[100] = {0};  // positive: high, negative: low
+    uint16_t timeptr = 0;
+    const uint16_t maxptr = 99;
 };
 
 #endif /*__MESSAGE_H__*/

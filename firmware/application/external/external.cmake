@@ -84,6 +84,10 @@ set(EXTCPPSRC
 	#wefaxrx
 	external/wefaxrx/main.cpp
 	external/wefaxrx/ui_wefax_rx.cpp
+
+	#protoview
+	external/protoview/main.cpp
+	external/protoview/ui_protoview.cpp
 )
 
 set(EXTAPPLIST
@@ -107,4 +111,5 @@ set(EXTAPPLIST
 	wardrivemap
 	tpmsrx
 	wefaxrx
+	protoview
 )
