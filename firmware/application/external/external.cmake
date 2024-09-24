@@ -96,6 +96,10 @@ set(EXTCPPSRC
 	#sstvtx
 	external/sstvtx/main.cpp
 	external/sstvtx/ui_sstvtx.cpp
+
+	#wavc16
+	external/wavc16/main.cpp
+	external/wavc16/ui_wavc16.cpp
 )
 
 set(EXTAPPLIST
@@ -122,4 +126,5 @@ set(EXTAPPLIST
 	adsbtx
 	morse_tx
 	sstvtx
+	wavc16
 )
