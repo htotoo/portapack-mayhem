@@ -25,10 +25,10 @@
 #include "ui.hpp"
 #include "ui_language.hpp"
 #include "ui_navigation.hpp"
-#include "ui_geomap.hpp"
-#include "app_settings.hpp"
 #include "utility.hpp"
-
+#include "file_path.hpp"
+#include "ui_fileman.hpp"
+#include "ui_receiver.hpp"
 using namespace ui;
 
 namespace ui::external_app::wavc16 {
@@ -37,15 +37,20 @@ class WavC16View : public View {
    public:
     WavC16View(NavigationView& nav);
     ~WavC16View();
-
+    void open_file();
+    bool convert_file(std::filesystem::path file);
     void focus() override;
 
     std::string title() const override {
         return "WavC16";
     };
 
+    Button btn_open{{1 * 8, 2 * 8, 8 * 8, 16}, "Convert"};
+    FrequencyField freq{{1 * 8, 0}};
+
    private:
     NavigationView& nav_;
+    rf::Frequency freq_{433920000};
 };
 };  // namespace ui::external_app::wavc16
 
