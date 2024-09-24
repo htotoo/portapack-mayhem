@@ -38,7 +38,7 @@ class WavC16View : public View {
     WavC16View(NavigationView& nav);
     ~WavC16View();
     void open_file();
-    bool convert_file(std::filesystem::path file);
+    uint8_t convert_file(std::filesystem::path file);
     void focus() override;
 
     std::string title() const override {
