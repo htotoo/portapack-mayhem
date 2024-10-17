@@ -106,6 +106,10 @@ set(EXTCPPSRC
 	#acars
 	external/acars_rx/main.cpp
 	external/acars_rx/acars_app.cpp
+
+	#satpass
+	external/satpass/main.cpp
+	external/satpass/ui_satpass.cpp
 	
 )
 
@@ -135,4 +139,5 @@ set(EXTAPPLIST
 	sstvtx
 	random_password
 	#acars_rx
+	satpass
 )
