@@ -129,16 +129,9 @@ class ACARSProcessor : public BasebandProcessor {
 
     dsp::decimate::FIRC8xR16x24FS4Decim8 decim_0{};  // Translate already done here !
     dsp::decimate::FIRC16xR16x32Decim8 decim_1{};
-    dsp::matched_filter::MatchedFilter mf{rect_taps_38k4_4k8_1t_2k4_p, 8};
-
-    clock_recovery::ClockRecovery<clock_recovery::FixedErrorFilter> clock_recovery{
-        4800,
-        2400,
-        {0.0555f},
-        [this](const float symbol) { this->consume_symbol(symbol); }};
 
     uint16_t update_crc(uint8_t dataByte);
-    void consume_symbol(const float symbol);
+    void consume_symbol(const uint8_t symbol);
     void payload_handler();
     void add_bit(uint8_t bit);
     void reset();
@@ -150,6 +143,10 @@ class ACARSProcessor : public BasebandProcessor {
         audio.size()};
     dsp::demodulate::AM demod{};
     AudioOutput audio_output{};
+
+    float freq = 0;
+    float phase = 0;
+    size_t bit_count = 0;
 
     Acarsstate curr_state = WSYN;
 

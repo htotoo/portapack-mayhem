@@ -27,6 +27,8 @@
 
 #include "event_m4.hpp"
 
+#define M_PI 3.14159265358979323846 /* pi */
+
 #define SYN 0x16
 #define SOH 0x01
 #define STX 0x02
@@ -47,9 +49,9 @@ ACARSProcessor::ACARSProcessor() {
 void ACARSProcessor::execute(const buffer_c8_t& buffer) {
     /* 2.4576MHz, 2048 samples */
 
-    const auto decim_0_out = decim_0.execute(buffer, dst_buffer);
-    const auto decim_1_out = decim_1.execute(decim_0_out, dst_buffer);
-    const auto decimator_out = decim_1_out;
+    const auto decim_0_out = decim_0.execute(buffer, dst_buffer);       // /8
+    const auto decim_1_out = decim_1.execute(decim_0_out, dst_buffer);  // /8
+    const auto decimator_out = decim_1_out;                             // 32
 
     /* 38.4kHz, 32 samples */
     feed_channel_stats(decimator_out);
@@ -58,8 +60,24 @@ void ACARSProcessor::execute(const buffer_c8_t& buffer) {
     audio_output.write(audio);
 
     for (size_t i = 0; i < decimator_out.count; i++) {
-        if (mf.execute_once(decimator_out.p[i])) {
-            clock_recovery(mf.get_output());
+        float I = decimator_out.p[i].real();
+        float Q = decimator_out.p[i].imag();
+        float phase_error = std::atan2(Q, I);
+
+        // Frequency estimation
+        freq += phase_error * 0.01f;  // Reduced bandwidth for stability
+
+        // Phase accumulator
+        phase += freq;
+        if (phase > M_PI) phase -= 2 * M_PI;
+        if (phase < -M_PI) phase += 2 * M_PI;
+
+        // Bit decision
+        bit_count++;
+        if (bit_count >= 16) {
+            int8_t bit = freq > 0 ? 1 : 0;
+            consume_symbol(bit);
+            bit_count = 0;
         }
     }
 }
@@ -91,10 +109,8 @@ void ACARSProcessor::reset() {
     parity_errors = 0;
 }
 
-void ACARSProcessor::consume_symbol(const float raw_symbol) {
-    const uint_fast8_t sliced_symbol = (raw_symbol >= 0.0f) ? 1 : 0;
-
-    add_bit(sliced_symbol);
+void ACARSProcessor::consume_symbol(const uint8_t raw_symbol) {
+    add_bit(raw_symbol);
     if (curr_state == WSYN && decode_count_bit == 8) {
         if ((decode_data & 0xff) == SYN) {
             curr_state = SYN2;
