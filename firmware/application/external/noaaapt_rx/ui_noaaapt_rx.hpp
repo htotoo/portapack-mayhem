@@ -122,6 +122,16 @@ class NoaaAptRxView : public View {
         {190, 1 * 16, 5 * 8, 16},
         LanguageHelper::currentMessages[LANG_START]};
 
+    uint8_t syncA[39] = {
+        0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
+        1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
+        0, 0, 0, 0, 0, 0, 0};  // the syncA pattern
+
+    uint8_t sync_buffer[39] = {0};  // my rolling sync buffer, to compare
+    uint8_t sync_index = 0;         // write pointer
+
+    bool feed_sync_checker(uint8_t val);
+
     MessageHandlerRegistration message_handler_stats{
         Message::ID::NoaaAptRxStatusData,
         [this](const Message* const p) {

@@ -129,13 +129,38 @@ void NoaaAptRxView::on_status(NoaaAptRxStatusDataMessage msg) {
     txt_status.set(tmp);
 }
 
+bool NoaaAptRxView::feed_sync_checker(uint8_t val) {
+    sync_buffer[sync_index] = val;
+    sync_index = (sync_index + 1) % 39;
+    for (int i = 0; i < 39; ++i) {
+        int buf_idx = (sync_index + i) % 39;  // Start from oldest
+        uint8_t curr = sync_buffer[buf_idx] < 0.5 ? 0 : 1;
+        if (curr != syncA[i])
+            return false;
+    }
+    return true;
+}
+
 // this stores and displays the image. keep it as simple as you can. a bit more complexity will kill the sync
 void NoaaAptRxView::on_image(NoaaAptRxImageDataMessage msg) {
     if ((line_num) >= 320 - NOAA_IMG_START_ROW * 16) line_num = 0;  // for draw reset
 
     for (uint16_t i = 0; i < msg.cnt; i += 1) {
         Color pxl = {msg.image[i], msg.image[i], msg.image[i]};
+        // checking for sync signal
+        if (feed_sync_checker(msg.image[i])) {
+            if (line_in_part < 100) {
+                line_in_part = 0;  // skip some pixels to align left
+            } else {
+                // too much diff, so start a new line (or maybe inthe end of line, so won't harm)
+                line_num++;
+                line_in_part = 0;
+                bmp.expand_y_delta(1);
+                bmp.seek(0, bmp.get_real_height());
+            }
+        }
         bmp.write_next_px(pxl);
+
         line_in_part++;
         if (line_in_part == NOAAAPT_PX_SIZE) {
             line_in_part = 0;

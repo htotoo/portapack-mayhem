@@ -54,12 +54,6 @@ void NoaaAptRx::execute(const buffer_c8_t& buffer) {
     // TODO: Feed channel_stats post-decimation data?
     feed_channel_stats(channel);
 
-    /* spectrum_samples += channel.count;
-    if (spectrum_samples >= spectrum_interval_samples) {
-        spectrum_samples -= spectrum_interval_samples;
-        channel_spectrum.feed(channel, channel_filter_low_f, channel_filter_high_f, channel_filter_transition);
-    }
-    */
     /* 96kHz complex<int16_t>[64]  for wfmam NOAA
      * -> FM demodulation
      * -> 96kHz int16_t[64] */
