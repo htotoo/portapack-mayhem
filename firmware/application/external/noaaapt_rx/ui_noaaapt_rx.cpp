@@ -143,7 +143,7 @@ bool NoaaAptRxView::feed_sync_checker(uint8_t val) {
 
 // this stores and displays the image. keep it as simple as you can. a bit more complexity will kill the sync
 void NoaaAptRxView::on_image(NoaaAptRxImageDataMessage msg) {
-    if ((line_num) >= 320 - NOAA_IMG_START_ROW * 16) line_num = 0;  // for draw reset
+    if ((line_num) >= screen_height - NOAA_IMG_START_ROW * 16) line_num = 0;  // for draw reset
 
     for (uint16_t i = 0; i < msg.cnt; i += 1) {
         Color pxl = {msg.image[i], msg.image[i], msg.image[i]};
