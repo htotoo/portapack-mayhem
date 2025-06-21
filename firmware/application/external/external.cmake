@@ -193,6 +193,10 @@ set(EXTCPPSRC
 	external/breakout/main.cpp
 	external/breakout/ui_breakout.cpp
 
+	#dinogame
+	external/dinogame/main.cpp
+	external/dinogame/ui_dinogame.cpp
+
 	#doom
 	external/doom/main.cpp
 	external/doom/ui_doom.cpp
@@ -216,6 +220,10 @@ set(EXTCPPSRC
 	#detector_rx
 	external/detector_rx/main.cpp
 	external/detector_rx/ui_detector_rx.cpp		
+
+	#space_invaders
+	external/spaceinv/main.cpp
+	external/spaceinv/ui_spaceinv.cpp		
 )
 
 set(EXTAPPLIST
@@ -265,10 +273,12 @@ set(EXTAPPLIST
 	snake
 	stopwatch
 	breakout
+	dinogame
 	doom
 	debug_pmem
 	scanner
 	level
 	gfxeq
 	detector_rx
+	spaceinv
 )
