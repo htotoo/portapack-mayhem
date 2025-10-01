@@ -2,7 +2,7 @@
  * Copyright (C) 2015 Jared Boone, ShareBrained Technology, Inc.
  * Copyright (C) 2016 Furrtek
  * Copyright (C) 2024 u-foka
- * Copyleft (ɔ) 2024 zxkmm under GPL license
+ * copyleft 2024 zxkmm AKA zix aka sommermorgentraum
  *
  * This file is part of PortaPack.
  *
@@ -70,9 +70,7 @@
 #include "ble_rx_app.hpp"
 #include "ble_tx_app.hpp"
 #include "capture_app.hpp"
-#include "ert_app.hpp"
 #include "pocsag_app.hpp"
-#include "soundboard_app.hpp"
 
 #include "core_control.hpp"
 #include "file.hpp"
@@ -131,7 +129,6 @@ const NavigationView::AppList NavigationView::appList = {
     {"aprsrx", "APRS", RX, Color::green(), &bitmap_icon_aprs, new ViewFactory<APRSRXView>()},
     {"audio", "Audio", RX, Color::green(), &bitmap_icon_speaker, new ViewFactory<AnalogAudioView>()},
     {"blerx", "BLE Rx", RX, Color::green(), &bitmap_icon_btle, new ViewFactory<BLERxView>()},
-    {"ert", "ERT Meter", RX, Color::green(), &bitmap_icon_ert, new ViewFactory<ERTAppView>()},
     {"pocsag", "POCSAG", RX, Color::green(), &bitmap_icon_pocsag, new ViewFactory<POCSAGAppView>()},
     {"radiosonde", "Radiosnde", RX, Color::green(), &bitmap_icon_sonde, new ViewFactory<SondeView>()},
     {"search", "Search", RX, Color::yellow(), &bitmap_icon_search, new ViewFactory<SearchView>()},
@@ -144,7 +141,6 @@ const NavigationView::AppList NavigationView::appList = {
     {"ooktx", "OOK", TX, ui::Color::yellow(), &bitmap_icon_remote, new ViewFactory<EncodersView>()},
     {"pocsagtx", "POCSAG TX", TX, ui::Color::green(), &bitmap_icon_pocsag, new ViewFactory<POCSAGTXView>()},
     {"rdstx", "RDS", TX, ui::Color::green(), &bitmap_icon_rds, new ViewFactory<RDSView>()},
-    {"soundbrd", "Soundbrd", TX, ui::Color::green(), &bitmap_icon_soundboard, new ViewFactory<SoundBoardView>()},
     {"touchtune", "TouchTune", TX, ui::Color::green(), &bitmap_icon_touchtunes, new ViewFactory<TouchTunesView>()},
     {"signalgen", "SignalGen", TX, Color::green(), &bitmap_icon_cwgen, new ViewFactory<SigGenView>()},
     /* TRX ********************************************************************/
@@ -764,7 +760,7 @@ void add_apps(NavigationView& nav, BtnGridView& grid, app_location_t loc) {
     for (auto& app : NavigationView::appList) {
         if (app.menuLocation == loc) {
             grid.add_item({app.displayName, app.iconColor, app.icon,
-                           [&nav, &app]() { 
+                           [&nav, &app]() {
                             i2cdev::I2CDevManager::set_autoscan_interval(0); //if i navigate away from any menu, turn off autoscan
                             nav.push_view(std::unique_ptr<View>(app.viewFactory->produce(nav))); }},
                           true);
@@ -791,8 +787,8 @@ void add_external_items(NavigationView& nav, app_location_t location, BtnGridVie
                          error_tile_pos);
     } else {
         std::sort(externalItems.begin(), externalItems.end(), [](const auto &a, const auto &b)
-        { 
-            return a.desired_position < b.desired_position; 
+        {
+            return a.desired_position < b.desired_position;
         });
 
         for (auto const& gridItem : externalItems) {
@@ -801,7 +797,7 @@ void add_external_items(NavigationView& nav, app_location_t location, BtnGridVie
             } else {
                 grid.insert_item(gridItem, gridItem.desired_position, true);
             }
-            
+
         }
 
         grid.update_items();

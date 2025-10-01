@@ -26,10 +26,16 @@
 #include "binder.hpp"
 #include "string_format.hpp"
 #include "ui_freqman.hpp"
+#include "audio.hpp"
 
 using namespace portapack;
+namespace pmem = portapack::persistent_memory;
 
 namespace ui {
+
+void SearchLogger::log_data(SearchRecentEntry& data) {
+    log_file.write_entry(";" + to_string_short_freq(data.frequency) + ";" + std::to_string(data.duration));
+}
 
 template <>
 void RecentEntriesTable<SearchRecentEntries>::draw(
@@ -75,6 +81,7 @@ SearchView::SearchView(
                   &check_snap,
                   &options_snap,
                   &big_display,
+                  &check_log,
                   &recent_entries_view});
 
     baseband::set_spectrum(SEARCH_SLICE_WIDTH, 31);
@@ -100,6 +107,14 @@ SearchView::SearchView(
         on_range_changed();
     });
 
+    check_log.on_select = [this](Checkbox&, bool v) {
+        logging = v;
+        if (logging) {
+            logger.append(logs_dir.string() + "/SEARCH_" + to_string_timestamp(rtc_time::now()) + ".CSV");
+            logger.write_header();
+        }
+    };
+
     bind(field_threshold, settings_.power_threshold);
     bind(check_snap, settings_.snap_search);
     bind(options_snap, settings_.snap_step);
@@ -108,9 +123,15 @@ SearchView::SearchView(
 
     on_range_changed();
     receiver_model.enable();
+
+    if (pmem::beep_on_packets()) {
+        audio::set_rate(audio::Rate::Hz_24000);
+        audio::output::start();
+    }
 }
 
 SearchView::~SearchView() {
+    audio::output::stop();
     receiver_model.disable();
     baseband::shutdown();
 }
@@ -192,7 +213,9 @@ void SearchView::do_detection() {
 
                         locked = true;
                         locked_bin = bin_max;
-
+                        if (pmem::beep_on_packets()) {
+                            baseband::request_audio_beep(1000, 24000, 60);
+                        }
                         // TODO: open Audio.
                     } else
                         text_infos.set("Out of range");
@@ -210,6 +233,7 @@ void SearchView::do_detection() {
 
                 auto& entry = ::on_packet(recent, resolved_frequency);
                 entry.set_duration(duration);
+                if (logging) logger.log_data(entry);
                 recent_entries_view.set_dirty();
 
                 text_infos.set("Listening");

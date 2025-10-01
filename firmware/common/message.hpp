@@ -134,6 +134,8 @@ class Message {
         NoaaAptRxConfigure = 77,
         NoaaAptRxStatusData = 78,
         NoaaAptRxImageData = 79,
+        FSKPacket = 80,
+        EPIRBPacket = 81,
         MAX
     };
 
@@ -338,6 +340,17 @@ class AISPacketMessage : public Message {
     baseband::Packet packet;
 };
 
+class EPIRBPacketMessage : public Message {
+   public:
+    constexpr EPIRBPacketMessage(
+        const baseband::Packet& packet)
+        : Message{ID::EPIRBPacket},
+          packet{packet} {
+    }
+
+    baseband::Packet packet;
+};
+
 class TPMSPacketMessage : public Message {
    public:
     constexpr TPMSPacketMessage(
@@ -452,6 +465,17 @@ struct BlePacketData {
     uint8_t dataLen;
 };
 
+struct FskPacketData {
+    int8_t real;
+    int8_t imag;
+    int max_dB;
+    uint8_t data[512];
+    uint16_t dataLen;
+    uint64_t syncWord;
+    float power;
+    float frequency_offset_hz;
+};
+
 class BLEPacketMessage : public Message {
    public:
     constexpr BLEPacketMessage(
@@ -461,6 +485,17 @@ class BLEPacketMessage : public Message {
     }
 
     BlePacketData* packet{nullptr};
+};
+
+class FSKRxPacketMessage : public Message {
+   public:
+    constexpr FSKRxPacketMessage(
+        FskPacketData* packet)
+        : Message{ID::FSKPacket},
+          packet{packet} {
+    }
+
+    FskPacketData* packet{nullptr};
 };
 
 class CodedSquelchMessage : public Message {
@@ -1127,24 +1162,27 @@ class FSKConfigureMessage : public Message {
 class FSKRxConfigureMessage : public Message {
    public:
     constexpr FSKRxConfigureMessage(
-        const fir_taps_real<24> decim_0_filter,
-        const fir_taps_real<32> decim_1_filter,
-        const fir_taps_real<32> channel_filter,
-        const size_t channel_decimation,
-        const size_t deviation)
+        const uint8_t samplesPerSymbol,
+        const uint32_t syncWord,
+        const uint8_t syncWordLength,
+        const uint32_t preamble,
+        const uint8_t preambleLength,
+        const uint16_t numDataBytes)
         : Message{ID::FSKRxConfigure},
-          decim_0_filter(decim_0_filter),
-          decim_1_filter(decim_1_filter),
-          channel_filter(channel_filter),
-          channel_decimation{channel_decimation},
-          deviation{deviation} {
+          samplesPerSymbol(samplesPerSymbol),
+          syncWord(syncWord),
+          syncWordLength(syncWordLength),
+          preamble(preamble),
+          preambleLength(preambleLength),
+          numDataBytes(numDataBytes) {
     }
 
-    const fir_taps_real<24> decim_0_filter;
-    const fir_taps_real<32> decim_1_filter;
-    const fir_taps_real<32> channel_filter;
-    const size_t channel_decimation;
-    const size_t deviation;
+    const uint8_t samplesPerSymbol;
+    const uint32_t syncWord;
+    const uint8_t syncWordLength;
+    const uint32_t preamble;
+    const uint8_t preambleLength;
+    const uint16_t numDataBytes;
 };
 
 class POCSAGConfigureMessage : public Message {

@@ -279,7 +279,7 @@ macro(DeclareTargets chunk_tag name)
 	include_directories(. ${INCDIR} ${MODE_INCDIR})
 	link_directories(${LLIBDIR})
 	target_link_libraries(${PROJECT_NAME}.elf ${LIBS})
-	
+
 	target_link_libraries(${PROJECT_NAME}.elf -Wl,-Map=${PROJECT_NAME}.map)
 	target_link_libraries(${PROJECT_NAME}.elf -Wl,--print-memory-usage)
 
@@ -369,13 +369,6 @@ set(MODE_CPPSRC
 DeclareTargets(PAMA am_audio)
 
 
-### Audio transmit
-
-set(MODE_CPPSRC
-	proc_audiotx.cpp
-)
-DeclareTargets(PATX audio_tx)
-
 ### Capture
 
 set(MODE_CPPSRC
@@ -397,13 +390,6 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PSON sonde)
 
-### FSK TX
-
-set(MODE_CPPSRC
-	proc_fsk.cpp
-)
-DeclareTargets(PFSK fsktx)
-
 ### FSK RX
 
 set(MODE_CPPSRC
@@ -411,6 +397,12 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PFSR fskrx)
 
+### FSK TX
+
+set(MODE_CPPSRC
+	proc_fsk.cpp
+)
+DeclareTargets(PFSK fsktx)
 
 ### Microphone transmit
 
@@ -579,6 +571,14 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PAFR afskrx)
 
+### EPIRB
+
+set(MODE_CPPSRC
+	proc_epirb.cpp
+)
+DeclareTargets(PEPI epirb_rx)
+
+
 ### NRF RX
 
 set(MODE_CPPSRC
@@ -682,6 +682,13 @@ set(MODE_CPPSRC
 	proc_noaaapt_rx.cpp
 )
 DeclareTargets(PNOA noaaapt_rx)
+
+### Audio transmit
+
+set(MODE_CPPSRC
+	proc_audiotx.cpp
+)
+DeclareTargets(PATX audio_tx)
 
 
 ### HackRF "factory" firmware
