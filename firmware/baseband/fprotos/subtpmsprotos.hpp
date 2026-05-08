@@ -12,6 +12,7 @@ So include here the .hpp, and add a new element to the protos vector in the cons
 #include "subtpmsbase.hpp"
 
 #include "t-schrader.hpp"
+#include "t-ford.hpp"
 
 #ifndef __FPROTO_PROTOLISTTPMS_H__
 #define __FPROTO_PROTOLISTTPMS_H__
@@ -23,6 +24,7 @@ class SubTPMSProtos : public FProtoListGeneral {
     SubTPMSProtos() {
         // add protos
         protos[FPT_Schrader] = new FProtoSubTPMSSchrader();
+        protos[FPT_Ford] = new FProtoSubTPMSFord();
 
         for (uint8_t i = 0; i < FPT_COUNT; ++i) {
             if (protos[i] != NULL) protos[i]->setCallback(callbackTarget);

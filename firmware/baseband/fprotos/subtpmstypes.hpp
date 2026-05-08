@@ -11,6 +11,7 @@ Also it must have a switch-case element in the getSubGhzDSensorTypeName() functi
 enum FPROTO_SUBTPMS_SENSOR : uint8_t {
     FPT_Invalid = 0,
     FPT_Schrader = 1,
+    FPT_Ford = 2,
     FPT_COUNT
 };
 

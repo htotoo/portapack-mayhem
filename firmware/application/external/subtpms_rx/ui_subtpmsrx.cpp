@@ -161,6 +161,10 @@ SubTPMSView::~SubTPMSView() {
 
 const char* SubTPMSView::getSensorTypeName(FPROTO_SUBTPMS_SENSOR type) {
     switch (type) {
+        case FPT_Schrader:
+            return "Schrader";
+        case FPT_Ford:
+            return "Ford";
         case FPT_Invalid:
         default:
             return "Unknown";
