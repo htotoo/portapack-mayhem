@@ -354,6 +354,10 @@ set(EXTCPPSRC
 	#two_tone_rx
 	external/two_tone_rx/main.cpp
 	external/two_tone_rx/ui_two_tone_rx.cpp 
+
+	#subtpms_rx
+	external/subtpms_rx/main.cpp
+	external/subtpms_rx/ui_subtpmsrx.cpp
 )
 
 set(EXTAPPLIST
@@ -442,6 +446,7 @@ set(EXTAPPLIST
 	p25_tx
 	two_tone_pager
 	two_tone_rx
+	subtpms_rx
 )
 
 # sdusb has type conflicts with PRALINE (HackRF Pro) - add only for non-PRALINE builds

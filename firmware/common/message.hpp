@@ -161,6 +161,7 @@ class Message {
         ToneDetectData = 103,
         ToneDetectConfig = 104,
         FlexTosend = 105,
+        SubTPMSData = 106,
         MAX
     };
 
@@ -1903,6 +1904,34 @@ class FlexTosendMessage : public Message {
     uint8_t type = 0;
     uint8_t msglen = 0;
     uint8_t msg[240] = {0};
+};
+
+class SubTPMSDataMessage : public Message {
+   public:
+    constexpr SubTPMSDataMessage(
+        uint8_t sensorType = 0,
+        uint16_t bits = 0,
+        uint64_t data = 0,
+        uint16_t id = 0xFFFF,
+        uint8_t battery = 0xFF,
+        int16_t temperature = 0xFFFF,
+        float pressure = -1.0)
+        : Message{ID::SubTPMSData},
+          sensorType{sensorType},
+          bits{bits},
+          data{data},
+          id{id},
+          battery{battery},
+          temperature{temperature},
+          pressure{pressure} {
+    }
+    uint8_t sensorType = 0;
+    uint16_t bits = 0;
+    uint64_t data = 0;
+    uint16_t id = 0xFFFF;
+    uint8_t battery = 0xFF;
+    int16_t temperature = 0xFFFF;
+    float pressure = -1.0;
 };
 
 #endif /*__MESSAGE_H__*/

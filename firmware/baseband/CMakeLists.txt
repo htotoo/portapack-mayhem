@@ -669,6 +669,14 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PSCD subcar)
 
+### SubTPMS Decoders
+
+set(MODE_CPPSRC
+	proc_subtpms.cpp
+)
+DeclareTargets(PSTP subtpms)
+
+
 ### Tone Detect RX
 
 set(MODE_CPPSRC

@@ -1,0 +1,57 @@
+/*
+Base class for all TPMS protocols.
+*/
+
+#ifndef __FPROTO_STPMSBASE_H__
+#define __FPROTO_STPMSBASE_H__
+
+#include "fprotogeneral.hpp"
+#include "subtpmstypes.hpp"
+
+#include <string>
+// default values to indicate 'no value'
+
+class FProtoSubTPMSBase;
+typedef void (*SubTPMSProtocolDecoderBaseRxCallback)(FProtoSubTPMSBase* instance);
+
+class FProtoSubTPMSBase {
+   public:
+    FProtoSubTPMSBase() {}
+    virtual ~FProtoSubTPMSBase() {}
+    virtual void feed(bool level, uint32_t duration) = 0;                         // need to be implemented on each protocol handler.
+    void setCallback(SubTPMSProtocolDecoderBaseRxCallback cb) { callback = cb; }  // this is called when there is a hit.
+
+    // General data holder, these will be passed
+    uint8_t sensorType = FPT_Invalid;
+    uint16_t data_count_bit = 0;
+    uint64_t decode_data = 0;
+    uint64_t decode_data2 = 0;
+
+    uint16_t id = 0xFFFF;
+    uint8_t battery = 0xFF;
+    int16_t temperature = 0xFFFF;
+    float pressure = -1.0;
+
+   protected:
+    // Helper functions to keep it as compatible with flipper as we can, so adding new protos will be easy.
+    void subghz_protocol_blocks_add_bit(uint8_t bit) {
+        decode_data = decode_data << 1 | bit;
+        decode_count_bit++;
+    }
+
+    // inner logic stuff, also for flipper compatibility.
+    uint32_t te_short = UINT32_MAX;
+    uint32_t te_long = UINT32_MAX;
+    uint32_t te_delta = UINT32_MAX;
+    uint32_t min_count_bit_for_found = UINT32_MAX;
+
+    SubTPMSProtocolDecoderBaseRxCallback callback = NULL;
+
+    uint8_t parser_step = 0;
+    uint32_t te_last = 0;
+    uint32_t decode_count_bit = 0;
+
+    //
+};
+
+#endif
