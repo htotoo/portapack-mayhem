@@ -59,7 +59,7 @@ struct SubTPMSRecentEntry {
         uint8_t sensorType,
         uint64_t data = 0,
         uint16_t bits = 0,
-        uint16_t id = 0xFFFF,
+        uint32_t id = 0xFFFFFFFF,
         uint8_t battery = 0xFF,
         int16_t temperature = 0xFFFF,
         float pressure = -1.0)
@@ -175,8 +175,8 @@ class SubTPMSView : public View {
 
     ui::RecentEntriesColumns columns{{
         {"Type", 0},
-        {"Bits", 4},
         {"Press", 6},
+        {"Temp", 5},
         {"Age", 3},
     }};
     SubTPMSRecentEntriesView recent_entries_view{columns, recent};

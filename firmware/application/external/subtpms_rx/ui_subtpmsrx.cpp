@@ -143,6 +143,10 @@ void SubTPMSView::on_data(const SubTPMSDataMessage* data) {
     if (matching_recent != std::end(recent)) {
         // Found within. Move to front of list, increment counter.
         (*matching_recent).reset_age();
+        (*matching_recent).data = data->data;
+        (*matching_recent).battery = data->battery;
+        (*matching_recent).temperature = data->temperature;
+        (*matching_recent).pressure = data->pressure;
         recent.push_front(*matching_recent);
         recent.erase(matching_recent);
     } else {
@@ -210,11 +214,11 @@ void RecentEntriesTable<ui::external_app::subtpms_rx::SubTPMSRecentEntries>::dra
     line = ui::external_app::subtpms_rx::SubTPMSView::getSensorTypeName((FPROTO_SUBTPMS_SENSOR)entry.sensorType);
     line = line + " " + to_string_hex(entry.id);
     line.resize(columns.at(0).second, ' ');
-    std::string ageStr = to_string_dec_uint(entry.age);
-    std::string pressStr = (entry.pressure >= 0) ? to_string_decimal(entry.pressure, 2) : "";
-    std::string bitsStr = to_string_dec_uint(entry.bits);
-    line += ui::external_app::subtpms_rx::SubTPMSView::pad_string_with_spaces(5 - bitsStr.length()) + bitsStr;
+    std::string ageStr = to_string_dec_uint(entry.age < 999 ? entry.age : 999);
+    std::string pressStr = (entry.pressure >= 0) ? to_string_decimal(entry.pressure, 1) : "";
+    std::string tempStr = to_string_dec_int(entry.temperature);
     line += ui::external_app::subtpms_rx::SubTPMSView::pad_string_with_spaces(7 - pressStr.length()) + pressStr;
+    line += ui::external_app::subtpms_rx::SubTPMSView::pad_string_with_spaces(6 - tempStr.length()) + tempStr;
     line += ui::external_app::subtpms_rx::SubTPMSView::pad_string_with_spaces(4 - ageStr.length()) + ageStr;
     line.resize(target_rect.width() / 8, ' ');
     painter.draw_string(target_rect.location(), style, line);

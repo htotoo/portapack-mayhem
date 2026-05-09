@@ -13,7 +13,6 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
     }
 
     bool sanity_check_eg53ma4(uint8_t* b) {
-        if ((b[0] & 0xF0) != 0x40) return false;
         uint8_t sum = 0;
         for (int i = 0; i < 9; i++) {
             sum += b[i];
@@ -26,22 +25,19 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
     }
 
     void analyze_eg53ma4(uint8_t* b) {
-        // ID: 24 bit
         id = (b[4] << 16) | (b[5] << 8) | b[6];
-        pressure = (float)b[7] * 25f;
-        temperature = (int16_t)b[8];
-        battery = 0xFF;
+        pressure = (float)b[7] * 2.5f;                        // kpa
+        temperature = ((float)b[8] - 32.0f) * (5.0f / 9.0f);  // celsius
+        battery = 0xFF;                                       // no battery info in this proto
     }
 
     void feed(bool level, uint32_t duration) {
         if (level == false && duration > 400) {
-            if (decode_count_bit >= 80) {
+            if (decode_count_bit >= 100) {
                 bool found = false;
-
                 for (int offset = 0; offset <= 16 && !found; offset++) {
                     uint8_t b[10];
                     uint8_t b_inv[10];
-
                     uint64_t d1 = decode_data >> offset;
                     if (offset > 0) {
                         uint64_t mask = (1ULL << offset) - 1;
@@ -49,6 +45,7 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
                     }
                     uint64_t d2 = decode_data2 >> offset;
 
+                    // Payload (80 bit)
                     b[0] = (d2 >> 8) & 0xFF;
                     b[1] = (d2) & 0xFF;
                     for (int i = 0; i < 8; i++) {
@@ -56,10 +53,9 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
                     }
 
                     for (int i = 0; i < 10; i++) b_inv[i] = ~b[i];
-
-                    if (sanity_check_eg53ma4(b_inv)) {
+                    uint8_t preamble_raw = (d2 >> 16) & 0xFF;
+                    if (preamble_raw == 0xFF && sanity_check_eg53ma4(b_inv)) {
                         data_count_bit = 80;
-
                         decode_data2 = (b_inv[0] << 8) | b_inv[1];
                         decode_data = 0;
                         for (int i = 0; i < 8; i++) {
@@ -69,15 +65,13 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
                         analyze_eg53ma4(b_inv);
                         if (callback) callback(this);
                         found = true;
-                    } else if (sanity_check_eg53ma4(b)) {
+                    } else if (preamble_raw == 0x00 && sanity_check_eg53ma4(b)) {
                         data_count_bit = 80;
-
                         decode_data2 = (b[0] << 8) | b[1];
                         decode_data = 0;
                         for (int i = 0; i < 8; i++) {
                             decode_data = (decode_data << 8) | b[i + 2];
                         }
-
                         analyze_eg53ma4(b);
                         if (callback) callback(this);
                         found = true;
