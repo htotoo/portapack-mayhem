@@ -48,10 +48,9 @@ void SubTPMSRecentEntryDetailView::update_data() {
     // set text elements
     text_type.set(SubTPMSView::getSensorTypeName((FPROTO_SUBTPMS_SENSOR)entry_.sensorType));
 
-    text_id.set("0x" + to_string_hex(serial));
+    text_id.set("0x" + to_string_hex(entry_.id));
     if (entry_.bits > 0) console.writeln("Bits: " + to_string_dec_uint(entry_.bits));
     if (entry_.data != 0) console.writeln("Data : " + to_string_hex(entry_.data));
-    if (entry_.id != 0xFFFF) console.writeln("ID: " + to_string_hex(entry_.id));
     if (entry_.battery != 0xFF) console.writeln("Battery: " + to_string_dec_uint(entry_.battery));
     if (entry_.temperature != (int16_t)0xFFFF) console.writeln("Temperature: " + to_string_dec_int(entry_.temperature));
     if (entry_.pressure != -1.0) console.writeln("Pressure: " + to_string_decimal(entry_.pressure, 2));
@@ -165,6 +164,20 @@ const char* SubTPMSView::getSensorTypeName(FPROTO_SUBTPMS_SENSOR type) {
             return "Schrader";
         case FPT_Ford:
             return "Ford";
+        case FPT_HyundaiVDO:
+            return "Hyundai VDO";
+        case FPT_Abarth124:
+            return "Abarth 124";
+        case FPT_Q85:
+            return "Q85";
+        case FPT_Airpuxem:
+            return "Airpuxem";
+        case FPT_AVE:
+            return "AVE";
+        case FPT_BMW:
+            return "BMW";
+        case FPT_AUDI:
+            return "AUDI";
         case FPT_Invalid:
         default:
             return "Unknown";

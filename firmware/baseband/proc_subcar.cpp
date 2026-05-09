@@ -121,7 +121,7 @@ void SubCarProcessor::execute(const buffer_c8_t& buffer) {
 
             // --- FM Part (Simple 2-FSK) ---
             if (mag > (threshold / 2)) {
-                const int32_t fm_hysteresis = 2000;
+                const int32_t fm_hysteresis = 200;
                 bool new_level = fm_state.current_logic_level;
                 if (fm_state.smoothed_discrim > fm_hysteresis) {
                     new_level = true;

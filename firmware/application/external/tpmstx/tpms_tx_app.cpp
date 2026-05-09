@@ -150,7 +150,7 @@ void TPMSTXView::on_pressure_unit_change() {
     if (format::pressure_unit == PRESSURE_UNIT_PSI) {
         display_value = pressure.psi();
     } else if (format::pressure_unit == PRESSURE_UNIT_BAR) {
-        display_value = pressure.bar();
+        display_value = static_cast<int>(pressure.bar());
     } else {
         display_value = pressure.kilopascal();
     }

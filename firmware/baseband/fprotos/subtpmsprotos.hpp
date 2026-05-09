@@ -13,6 +13,11 @@ So include here the .hpp, and add a new element to the protos vector in the cons
 
 #include "t-schrader.hpp"
 #include "t-ford.hpp"
+#include "t-hyundai.hpp"
+#include "t-abarth124.hpp"
+#include "t-airpuxem.hpp"
+#include "t-ave.hpp"
+#include "t-bmw.hpp"
 
 #ifndef __FPROTO_PROTOLISTTPMS_H__
 #define __FPROTO_PROTOLISTTPMS_H__
@@ -23,8 +28,15 @@ class SubTPMSProtos : public FProtoListGeneral {
     SubTPMSProtos& operator=(const SubTPMSProtos&) = delete;
     SubTPMSProtos() {
         // add protos
-        protos[FPT_Schrader] = new FProtoSubTPMSSchrader();
-        protos[FPT_Ford] = new FProtoSubTPMSFord();
+        protos[FPT_Schrader] = new FProtoSubTPMSSchraderEG53MA4();
+        /* protos[FPT_Ford] = new FProtoSubTPMSFord();
+         protos[FPT_HyundaiVDO] = new FProtoSubTPMSHyundaiVDO();
+         protos[FPT_Abarth124] = new FProtoSubTPMSAbarth124();
+         protos[FPT_Q85] = nullptr;  // implemented in the prev
+         protos[FPT_Airpuxem] = new FProtoSubTPMSAirpuxem();
+         protos[FPT_AVE] = new FProtoSubTPMSAVE();
+         protos[FPT_BMW] = new FProtoSubTPMSBMW();
+         protos[FPT_AUDI] = nullptr;  // in bmw */
 
         for (uint8_t i = 0; i < FPT_COUNT; ++i) {
             if (protos[i] != NULL) protos[i]->setCallback(callbackTarget);

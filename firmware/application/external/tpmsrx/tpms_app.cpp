@@ -66,6 +66,9 @@ std::string id(tpms::TransponderID id) {
 }
 
 std::string pressure(Pressure pressure) {
+    if (PRESSURE_UNIT_BAR == format::pressure_unit) {
+        return to_string_decimal(pressure.bar(), 2);
+    }
     return to_string_dec_int(pressure_unit == PRESSURE_UNIT_PSI ? pressure.psi() : pressure_unit == PRESSURE_UNIT_BAR ? pressure.bar()
                                                                                                                       : pressure.kilopascal(),
                              3);

@@ -54,8 +54,8 @@ class Pressure {
         return kpa_ * 1000 / 6895;
     }
 
-    int bar() const {
-        return kpa_ / 100;
+    float bar() const {
+        return kpa_ / 100.0f;
     }
 
    private:

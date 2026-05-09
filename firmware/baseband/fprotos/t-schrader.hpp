@@ -1,170 +1,119 @@
-#pragma once
+#ifndef __FPROTO_TPMS_SCHRADER_EG53MA4_H__
+#define __FPROTO_TPMS_SCHRADER_EG53MA4_H__
+
 #include "subtpmsbase.hpp"
-#include <cstring>
 
-// https://github.com/merbanan/rtl_433/blob/master/src/devices/schraeder.c
-// https://elib.dlr.de/81155/1/TPMS_for_Trafffic_Management_purposes.pdf
-// https://github.com/furrtek/portapack-havoc/issues/349
-// https://fccid.io/MRXGG4
-// https://fccid.io/MRXGG4T
-
-/**
- * Schrader 3013/3015 MRX-GG4
-
-OEM
-KIA Sportage CGA 11-SPT1504-RA
-Mercedes-Benz A0009054100
-
-* Frequency: 433.92MHz+-38KHz
-* Modulation: ASK
-* Working Temperature: -50°C to 125°C
-* Tire monitoring range value: 0kPa-350kPa+-7kPa
-
-Examples in normal environmental conditions:
-3000878456094cd0
-3000878456084ecb
-3000878456074d01
-
-Data layout:
- * | Byte 0    | Byte 1    | Byte 2    | Byte 3    | Byte 4    | Byte 5    | Byte 6    | Byte 7    |
- * | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
- * | SSSS SSSS | IIII IIII | IIII IIII | IIII IIII | IIII IIII | PPPP PPPP | TTTT TTTT | CCCC CCCC |
- *
-
-- The preamble is 0b000
-- S: always 0x30 in relearn state
-- I: 32 bit ID
-- P: 8 bit Pressure (multiplyed by 2.5 = PSI)
-- T: 8 bit Temperature (deg. C offset by 50)
-- C: 8 bit Checksum (CRC8, Poly 0x7, Init 0x0)
-*/
-
-#define PREAMBLE 0b000
-#define PREAMBLE_BITS_LEN 3
-
-typedef enum {
-    SchraderGG4DecoderStepReset = 0,
-    SchraderGG4DecoderStepCheckPreamble,
-    SchraderGG4DecoderStepDecoderData,
-    SchraderGG4DecoderStepSaveDuration,
-    SchraderGG4DecoderStepCheckDuration,
-} SchraderGG4DecoderStep;
-
-class FProtoSubTPMSSchrader : public FProtoSubTPMSBase {
+class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
    public:
-    FProtoSubTPMSSchrader() {
+    FProtoSubTPMSSchraderEG53MA4() {
         sensorType = FPT_Schrader;
+
         te_short = 120;
         te_long = 240;
-        te_delta = 55;
-        min_count_bit_for_found = 64;
+        te_delta = 60;
+        min_count_bit_for_found = 115;
     }
 
-    bool tpms_protocol_schrader_gg4_check_crc() {
-        uint8_t msg[] = {
-            uint8_t(decode_data >> 48),
-            uint8_t(decode_data >> 40),
-            uint8_t(decode_data >> 32),
-            uint8_t(decode_data >> 24),
-            uint8_t(decode_data >> 16),
-            uint8_t(decode_data >> 8)};
-
-        uint8_t crc = FProtoGeneral::subghz_protocol_blocks_crc8(msg, 6, 0x7, 0);
-        return (crc == (decode_data & 0xFF));
-    }
-
-    ManchesterEvent level_and_duration_to_event(bool level, uint32_t duration) {
-        bool is_long = false;
-
-        if (DURATION_DIFF(duration, te_long) <
-            te_delta) {
-            is_long = true;
-        } else if (
-            DURATION_DIFF(duration, te_short) <
-            te_delta) {
-            is_long = false;
-        } else {
-            return ManchesterEventReset;
+    bool sanity_check_eg53ma4(uint8_t* b) {
+        // 1. Modulo-256 Checksum
+        uint8_t sum = 0;
+        for (int i = 0; i < 9; i++) {
+            sum += b[i];
         }
+        if (sum != b[9]) return false;
 
-        if (level)
-            return is_long ? ManchesterEventLongHigh : ManchesterEventShortHigh;
-        else
-            return is_long ? ManchesterEventLongLow : ManchesterEventShortLow;
+        // 2. Prevent dead-air / zeroed matches
+        if (!b[1] && !b[2] && !b[4] && !b[5] && !b[7] && !b[8]) return false;
+        if (b[4] == 0x00 && b[5] == 0x00 && b[6] == 0x00) return false;
+        if (b[4] == 0xFF && b[5] == 0xFF && b[6] == 0xFF) return false;
+
+        // 3. Strict physical limits
+        if (b[7] > 240) return false;
+        if (b[8] > 212) return false;
+
+        return true;
     }
 
-    void tpms_protocol_schrader_gg4_analyze() {
-        id = decode_data >> 24;
+    void analyze_eg53ma4(uint8_t* b) {
+        id = (b[4] << 16) | (b[5] << 8) | b[6];
+        pressure = (float)b[7] * 2.5f;
+        temperature = ((float)b[8] - 32.0f) * (5.0f / 9.0f);
         battery = 0xFF;
-        temperature = ((decode_data >> 8) & 0xFF) - 50;
-        pressure = ((decode_data >> 16) & 0xFF) * 2.5 * 0.069;
     }
 
     void feed(bool level, uint32_t duration) {
-        bool bit = false;
-        bool have_bit = false;
+        // 1. GAP DETECTOR
+        if (level == false && duration > 450) {
+            if (decode_count_bit >= 115) {
+                bool found = false;
 
-        // low-level bit sequence decoding
-        if (parser_step != SchraderGG4DecoderStepReset) {
-            ManchesterEvent event = level_and_duration_to_event(level, duration);
+                // CRITICAL FIX: Scan backwards (3 down to 0) to evaluate the true, older packet
+                // BEFORE the left-shifted "ghost" caused by trailing RF noise.
+                for (int offset = 3; offset >= 0 && !found; offset--) {
+                    uint8_t b[10];
+                    uint8_t b_inv[10];
 
-            if (event == ManchesterEventReset) {
-                if ((parser_step == SchraderGG4DecoderStepDecoderData) && decode_count_bit) {
-                    // FURI_LOG_D(TAG, "%d-%ld", level, duration);
+                    uint64_t d1 = decode_data >> offset;
+
+                    // Prevent C++ Undefined Behavior when offset is 0
+                    if (offset > 0) {
+                        uint64_t mask = (1ULL << offset) - 1;
+                        d1 |= (decode_data2 & mask) << (64 - offset);
+                    }
+                    uint64_t d2 = decode_data2 >> offset;
+
+                    b[0] = (d2 >> 8) & 0xFF;
+                    b[1] = (d2) & 0xFF;
+                    for (int i = 0; i < 8; i++) {
+                        b[i + 2] = (d1 >> (56 - i * 8)) & 0xFF;
+                    }
+
+                    for (int i = 0; i < 10; i++) b_inv[i] = ~b[i];
+
+                    if (sanity_check_eg53ma4(b)) {
+                        data_count_bit = 80;
+                        analyze_eg53ma4(b);
+                        if (callback) callback(this);
+                        found = true;
+                    } else if (sanity_check_eg53ma4(b_inv)) {
+                        data_count_bit = 80;
+                        analyze_eg53ma4(b_inv);
+                        if (callback) callback(this);
+                        found = true;
+                    }
                 }
-
-                parser_step = SchraderGG4DecoderStepReset;
-            } else {
-                have_bit = FProtoGeneral::manchester_advance(manchester_saved_state, event, &manchester_saved_state, &bit);
-                if (!have_bit) return;
-                // Invert value, due to signal is Manchester II and decoder is Manchester I
-                bit = !bit;
             }
+
+            FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
+            decode_count_bit = 0;
+            decode_data = 0;
+            decode_data2 = 0;
+            return;
         }
 
-        switch (parser_step) {
-            case SchraderGG4DecoderStepReset:
-                // wait for start ~480us pulse
-                if ((level) && (DURATION_DIFF(duration, te_long * 2) < te_delta)) {
-                    parser_step = SchraderGG4DecoderStepCheckPreamble;
-                    header_count = 0;
-                    decode_data = 0;
-                    decode_count_bit = 0;
-                    // First will be short space, so set correct initial state for machine
-                    // https://clearwater.com.au/images/rc5/rc5-state-machine.gif
-                    manchester_saved_state = ManchesterStateStart1;
-                }
-                break;
-            case SchraderGG4DecoderStepCheckPreamble:
-                if (bit != 0) {
-                    parser_step = SchraderGG4DecoderStepReset;
-                    break;
-                }
+        // 2. TIMING CLASSIFIER
+        ManchesterEvent event = ManchesterEventReset;
+        if (DURATION_DIFF(duration, te_short) < te_delta) {
+            event = level ? ManchesterEventShortHigh : ManchesterEventShortLow;
+        } else if (DURATION_DIFF(duration, te_long) < te_delta) {
+            event = level ? ManchesterEventLongHigh : ManchesterEventLongLow;
+        } else {
+            FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
+            decode_count_bit = 0;
+            return;
+        }
 
-                header_count++;
-                if (header_count == PREAMBLE_BITS_LEN)
-                    parser_step = SchraderGG4DecoderStepDecoderData;
-                break;
-
-            case SchraderGG4DecoderStepDecoderData:
-                subghz_protocol_blocks_add_bit(bit);
-                if (decode_count_bit ==
-                    min_count_bit_for_found) {
-                    if (!tpms_protocol_schrader_gg4_check_crc()) {
-                        // FURI_LOG_D(TAG, "CRC mismatch drop");
-                    } else {
-                        data_count_bit = decode_count_bit;
-                        tpms_protocol_schrader_gg4_analyze();
-                        if (callback)
-                            callback(this);
-                    }
-                    parser_step = SchraderGG4DecoderStepReset;
-                }
-                break;
+        // 3. MANCHESTER DECODER
+        bool bitstate;
+        if (FProtoGeneral::manchester_advance(manchester_saved_state, event, &manchester_saved_state, &bitstate)) {
+            decode_data2 = (decode_data2 << 1) | ((decode_data >> 63) & 1);
+            decode_data = (decode_data << 1) | bitstate;
+            decode_count_bit++;
         }
     }
 
-   private:
-    uint8_t header_count = 0;
-    ManchesterState manchester_saved_state = ManchesterStateStart1;
+   protected:
+    ManchesterState manchester_saved_state = ManchesterStateMid1;
 };
+
+#endif
