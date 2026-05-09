@@ -27,7 +27,7 @@ class FProtoSubTPMSBase {
     uint64_t decode_data = 0;
     uint64_t decode_data2 = 0;
 
-    uint16_t id = 0xFFFF;
+    uint32_t id = 0xFFFFFFFF;
     uint8_t battery = 0xFF;
     int16_t temperature = 0xFFFF;
     float pressure = -1.0;
