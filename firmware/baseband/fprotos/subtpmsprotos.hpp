@@ -28,7 +28,10 @@ class SubTPMSProtos : public FProtoListGeneral {
     SubTPMSProtos& operator=(const SubTPMSProtos&) = delete;
     SubTPMSProtos() {
         // add protos
-        protos[FPT_Schrader] = new FProtoSubTPMSSchraderEG53MA4();
+        protos[FPT_Schrader_EG53MA4] = new FProtoSubTPMSSchraderEG53MA4();
+        protos[FPT_Schrader] = new FProtoSubTPMSSchrader();
+        protos[FPT_Schrader_SMD3MA4] = new FProtoSubTPMSSchraderSMD3MA4();
+
         /* protos[FPT_Ford] = new FProtoSubTPMSFord();
          protos[FPT_HyundaiVDO] = new FProtoSubTPMSHyundaiVDO();
          protos[FPT_Abarth124] = new FProtoSubTPMSAbarth124();

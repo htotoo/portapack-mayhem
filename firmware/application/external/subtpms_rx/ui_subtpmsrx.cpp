@@ -166,6 +166,10 @@ const char* SubTPMSView::getSensorTypeName(FPROTO_SUBTPMS_SENSOR type) {
     switch (type) {
         case FPT_Schrader:
             return "Schrader";
+        case FPT_Schrader_SMD3MA4:
+            return "Sc_SMD3MA4";
+        case FPT_Schrader_EG53MA4:
+            return "Sc_EG53MA4";
         case FPT_Ford:
             return "Ford";
         case FPT_HyundaiVDO:
