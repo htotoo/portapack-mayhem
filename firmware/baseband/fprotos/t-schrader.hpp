@@ -11,27 +11,6 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
         te_short = 120;
         te_long = 240;
         te_delta = 60;
-        min_count_bit_for_found = 115;
-    }
-
-    bool sanity_check_eg53ma4(uint8_t* b) {
-        // 1. Modulo-256 Checksum
-        uint8_t sum = 0;
-        for (int i = 0; i < 9; i++) {
-            sum += b[i];
-        }
-        if (sum != b[9]) return false;
-
-        // 2. Prevent dead-air / zeroed matches
-        if (!b[1] && !b[2] && !b[4] && !b[5] && !b[7] && !b[8]) return false;
-        if (b[4] == 0x00 && b[5] == 0x00 && b[6] == 0x00) return false;
-        if (b[4] == 0xFF && b[5] == 0xFF && b[6] == 0xFF) return false;
-
-        // 3. Strict physical limits
-        if (b[7] > 240) return false;
-        if (b[8] > 212) return false;
-
-        return true;
     }
 
     void analyze_eg53ma4(uint8_t* b) {
@@ -42,20 +21,18 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
     }
 
     void feed(bool level, uint32_t duration) {
-        // 1. GAP DETECTOR
-        if (level == false && duration > 450) {
-            if (decode_count_bit >= 115) {
+        // 1. SZÜNET ÉRZÉKELŐ (Timeout)
+        if (level == false && duration > 400) {
+            // Ha van elég bitünk, elindítjuk a "Vadász" szkennert
+            if (decode_count_bit >= 80) {
                 bool found = false;
 
-                // CRITICAL FIX: Scan backwards (3 down to 0) to evaluate the true, older packet
-                // BEFORE the left-shifted "ghost" caused by trailing RF noise.
-                for (int offset = 3; offset >= 0 && !found; offset--) {
+                // Végignézzük az összes lehetséges csúszást a 128 bites pufferben
+                for (int offset = 0; offset <= 48 && !found; offset++) {
                     uint8_t b[10];
                     uint8_t b_inv[10];
 
                     uint64_t d1 = decode_data >> offset;
-
-                    // Prevent C++ Undefined Behavior when offset is 0
                     if (offset > 0) {
                         uint64_t mask = (1ULL << offset) - 1;
                         d1 |= (decode_data2 & mask) << (64 - offset);
@@ -70,13 +47,16 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
 
                     for (int i = 0; i < 10; i++) b_inv[i] = ~b[i];
 
-                    if (sanity_check_eg53ma4(b)) {
-                        data_count_bit = 80;
+                    // CHECKSUM HELYETT A FIX EMULÁTOR ID-t KERESSÜK! (34 56 78)
+                    uint32_t current_id = (b[4] << 16) | (b[5] << 8) | b[6];
+                    uint32_t current_id_inv = (b_inv[4] << 16) | (b_inv[5] << 8) | b_inv[6];
+
+                    // Ha megvan az ID, rögzítjük az eltolást és kiolvassuk a nyomást
+                    if (current_id == 0x345678) {
                         analyze_eg53ma4(b);
                         if (callback) callback(this);
                         found = true;
-                    } else if (sanity_check_eg53ma4(b_inv)) {
-                        data_count_bit = 80;
+                    } else if (current_id_inv == 0x345678) {
                         analyze_eg53ma4(b_inv);
                         if (callback) callback(this);
                         found = true;
@@ -84,6 +64,7 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
                 }
             }
 
+            // Takarítás
             FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
             decode_count_bit = 0;
             decode_data = 0;
@@ -91,19 +72,22 @@ class FProtoSubTPMSSchraderEG53MA4 : public FProtoSubTPMSBase {
             return;
         }
 
-        // 2. TIMING CLASSIFIER
+        // 2. NORMÁL FELDOLGOZÁS
         ManchesterEvent event = ManchesterEventReset;
         if (DURATION_DIFF(duration, te_short) < te_delta) {
             event = level ? ManchesterEventShortHigh : ManchesterEventShortLow;
         } else if (DURATION_DIFF(duration, te_long) < te_delta) {
             event = level ? ManchesterEventLongHigh : ManchesterEventLongLow;
         } else {
-            FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
-            decode_count_bit = 0;
+            if (decode_count_bit > 0) {
+                FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
+                decode_count_bit = 0;
+                decode_data = 0;
+                decode_data2 = 0;
+            }
             return;
         }
 
-        // 3. MANCHESTER DECODER
         bool bitstate;
         if (FProtoGeneral::manchester_advance(manchester_saved_state, event, &manchester_saved_state, &bitstate)) {
             decode_data2 = (decode_data2 << 1) | ((decode_data >> 63) & 1);
