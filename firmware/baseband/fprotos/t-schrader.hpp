@@ -261,7 +261,7 @@ class FProtoSubTPMSSchraderSMD3MA4 : public FProtoSubTPMSBase {
                 bool found = false;
 
                 // Keressük a Preamble-t a csúszóablakban
-                for (int offset = 0; offset <= decode_count_bit - 110 && !found; offset++) {
+                for (int offset = 0; (int32_t)offset <= (int32_t)decode_count_bit - 110 && !found; offset++) {
                     // A 36-bites preamble (0xF5555555E) kinyerése
                     uint64_t preamble = (decode_data2 >> (offset + 10)) & 0xFFFFFFFFFULL;
 

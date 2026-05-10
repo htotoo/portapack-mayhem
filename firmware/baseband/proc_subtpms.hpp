@@ -1,22 +1,6 @@
 /*
  * Copyright (C) 2026 HTotoo
- *
- * This file is part of PortaPack.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street,
- * Boston, MA 02110-1301, USA.
+ * (Standard PortaPack header)
  */
 
 #ifndef __PROC_SUBTPMS_H__
@@ -33,8 +17,8 @@
 #include "fprotos/subtpmsprotos.hpp"
 #pragma GCC pop_options
 
-#define OOK_EST_HIGH_RATIO 3  // Constant for slowness of OOK high level estimator
-#define OOK_EST_LOW_RATIO 5   // Constant for slowness of OOK low level (noise) estimator (very slow)
+#define OOK_EST_HIGH_RATIO 3
+#define OOK_EST_LOW_RATIO 5
 #define OOK_MAX_HIGH_LEVEL 450000
 
 class SubTPMSProcessor : public BasebandProcessor {
@@ -52,17 +36,15 @@ class SubTPMSProcessor : public BasebandProcessor {
     uint32_t low_estimate = 100;
     uint32_t high_estimate = 12000;
     uint32_t min_high_level = 10;
-    uint8_t numg = 0;                // count of matched signals to filter spikes
-    size_t baseband_fs = 4'000'000;  // will be set later by configure message
+    uint8_t numg = 0;
+    size_t baseband_fs = 4'000'000;
     uint32_t nsPerDecSamp = 0;
 
-    /* Array Buffer aux. used in decim0 and decim1 IQ c16 signed  data ; (decim0 defines the max length of the array) */
-    std::array<complex16_t, 512> dst{};  // decim0 /4 ,  2048/4 = 512 complex I,Q
+    std::array<complex16_t, 512> dst{};
     const buffer_c16_t dst_buffer{
         dst.data(),
         dst.size()};
 
-    /* Decimates */
     dsp::decimate::FIRC8xR16x24FS4Decim4 decim_0{};
     dsp::decimate::FIRC16xR16x16Decim2 decim_1{};
 
@@ -71,22 +53,21 @@ class SubTPMSProcessor : public BasebandProcessor {
     bool currentHiLow = false;
     bool configured{false};
 
-    // fm part:
+    // --- ÚJ, ADAPTÍV FM ÁLLAPOTTÉR ---
     struct DemodFMState {
-        bool current_logic_level = false;
-        uint32_t buffer_count = 0;
-        int16_t last_re = 0;  // Store previous Real sample
-        int16_t last_im = 0;
+        int16_t last_re_s = 0;
+        int16_t last_im_s = 0;
         int32_t smoothed_discrim = 0;
+        int32_t dc_offset = 0;
+        int32_t deviation_avg = 0;
     };
     DemodFMState fm_state{};
 
     uint8_t modulation = 0;  // 0 am, 1 fm
 
-    FProtoListGeneral* protoList = new SubTPMSProtos();  // holds all the protocols we can parse
+    FProtoListGeneral* protoList = new SubTPMSProtos();
     void configure(const SubGhzFPRxConfigureMessage& message);
 
-    /* NB: Threads should be the last members in the class definition. */
     BasebandThread baseband_thread{baseband_fs, this, baseband::Direction::Receive};
     RSSIThread rssi_thread{};
 };

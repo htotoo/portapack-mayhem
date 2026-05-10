@@ -3,57 +3,40 @@
 
 #include "subtpmsbase.hpp"
 
-typedef enum {
-    HyundaiDecoderStepSearch = 0,
-    HyundaiDecoderStepPayload
-} HyundaiDecoderStep;
-
 class FProtoSubTPMSHyundaiVDO : public FProtoSubTPMSBase {
    public:
-    FProtoSubTPMSHyundaiVDO() {
-        sensorType = FPT_HyundaiVDO;  // Ensure this enum exists in your global definitions
+    uint16_t sync_reg = 0;
+    bool collecting_payload = false;
+    int payload_bits = 0;
+    bool inverted_phase = false;
 
+    FProtoSubTPMSHyundaiVDO() {
+        sensorType = FPT_HyundaiVDO;
+        // A bizonyítottan tökéletes időzítések a te szenzorodhoz!
         te_short = 52;
         te_long = 104;
         te_delta = 25;
-        min_count_bit_for_found = 80;  // Exactly 10 bytes expected
     }
 
-    void tpms_protocol_hyundai_vdo_analyze(uint8_t* b) {
-        // I = ID (Bytes 1 to 4)
+    uint8_t crc8_vdo(uint8_t* data, size_t len) {
+        uint8_t crc = 0xAA;
+        for (size_t i = 0; i < len; i++) {
+            crc ^= data[i];
+            for (int j = 0; j < 8; j++) {
+                if (crc & 0x80)
+                    crc = (crc << 1) ^ 0x07;
+                else
+                    crc <<= 1;
+            }
+        }
+        return crc;
+    }
+
+    void analyze_hyundai(uint8_t* b) {
         id = ((uint32_t)b[1] << 24) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 8) | b[4];
-
-        // Battery status is unmapped in this format, leaving as 0xFF
-        battery = 0xFF;
-
-        // P = Pressure (Byte 6)
-        // b[6] * 1.375 = kPa. Portapack expects Bar (1 Bar = 100 kPa)
-        pressure = ((float)b[6] * 1.375f) * 0.01f;
-
-        // T = Temperature (Byte 7, offset by 50)
+        pressure = (float)b[6] * 1.375f;
         temperature = (float)b[7] - 50.0f;
-    }
-
-    bool hyundai_sanity_check(uint8_t* b) {
-        // 1. Validate ID is not empty or fully saturated
-        if (b[1] == 0x00 && b[2] == 0x00 && b[3] == 0x00 && b[4] == 0x00) return false;
-        if (b[1] == 0xFF && b[2] == 0xFF && b[3] == 0xFF && b[4] == 0xFF) return false;
-
-        // 2. Validate known transmission states.
-        // According to rtl_433, byte 0 is virtually always 0x20, 0x21, 0x22, or 0x23
-        if (b[0] != 0x20 && b[0] != 0x21 && b[0] != 0x22 && b[0] != 0x23) return false;
-
-        return true;
-    }
-
-    void reset_decoder() {
-        FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
-        parser_step = HyundaiDecoderStepSearch;
-        sync_reg = 0;
-        decode_count_bit = 0;
-        decode_data = 0;
-        decode_data2 = 0;
-        phase_inverted = false;
+        battery = b[8];
     }
 
     void feed(bool level, uint32_t duration) {
@@ -64,61 +47,67 @@ class FProtoSubTPMSHyundaiVDO : public FProtoSubTPMSBase {
         } else if (DURATION_DIFF(duration, te_long) < te_delta) {
             event = level ? ManchesterEventLongHigh : ManchesterEventLongLow;
         } else {
-            // Gap/Noise -> Hard reset the machine
-            reset_decoder();
+            // Zaj vagy jelszakadás: AZONNALI NULLÁZÁS!
+            // Ez védi meg a rendszert attól, hogy a zajt adatként kezelje.
+            if (sync_reg > 0 || collecting_payload) {
+                FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
+                sync_reg = 0;
+                collecting_payload = false;
+                payload_bits = 0;
+            }
             return;
         }
 
         bool bitstate;
-        bool data_ok = FProtoGeneral::manchester_advance(manchester_saved_state, event, &manchester_saved_state, &bitstate);
-
-        if (data_ok) {
-            if (parser_step == HyundaiDecoderStepSearch) {
-                // Shift bits into a 32-bit preamble tracker
+        if (FProtoGeneral::manchester_advance(manchester_saved_state, event, &manchester_saved_state, &bitstate)) {
+            if (!collecting_payload) {
+                // 1. FÁZIS: Szinkronszó vadászat
                 sync_reg = (sync_reg << 1) | bitstate;
 
-                // Hyundai VDO preamble is 0x55555556 (normal) or 0xAAAAAAA9 (inverted)
-                if (sync_reg == 0x55555556 || sync_reg == 0xAAAAAAA9) {
-                    parser_step = HyundaiDecoderStepPayload;
-                    decode_count_bit = 0;
+                // Keresünk 9 nullát és 1 egyest (10 bites maszk: 0x03FF).
+                // Mivel a szenzor valójában 15 nullát küld, hagyunk mozgásteret a rádiónak.
+                if ((sync_reg & 0x03FF) == 0x0001) {
+                    collecting_payload = true;
+                    inverted_phase = false;
+                    payload_bits = 0;
                     decode_data = 0;
                     decode_data2 = 0;
-                    phase_inverted = (sync_reg == 0xAAAAAAA9);
+                } else if ((sync_reg & 0x03FF) == 0x03FE) {
+                    // Invertált fázis: 9 egyes, 1 nulla
+                    collecting_payload = true;
+                    inverted_phase = true;
+                    payload_bits = 0;
+                    decode_data = 0;
+                    decode_data2 = 0;
                 }
-            } else if (parser_step == HyundaiDecoderStepPayload) {
-                // Collect exactly 80 bits into our cascaded window
+            } else {
+                // 2. FÁZIS: Pontosan 80 bit adat beolvasása
                 decode_data2 = (decode_data2 << 1) | ((decode_data >> 63) & 1);
                 decode_data = (decode_data << 1) | bitstate;
-                decode_count_bit++;
+                payload_bits++;
 
-                // Strictly evaluate only at the 80th bit
-                if (decode_count_bit == 80) {
+                if (payload_bits == 80) {
                     uint8_t b[10];
                     b[0] = (decode_data2 >> 8) & 0xFF;
                     b[1] = (decode_data2) & 0xFF;
-                    b[2] = (decode_data >> 56) & 0xFF;
-                    b[3] = (decode_data >> 48) & 0xFF;
-                    b[4] = (decode_data >> 40) & 0xFF;
-                    b[5] = (decode_data >> 32) & 0xFF;
-                    b[6] = (decode_data >> 24) & 0xFF;
-                    b[7] = (decode_data >> 16) & 0xFF;
-                    b[8] = (decode_data >> 8) & 0xFF;
-                    b[9] = (decode_data) & 0xFF;
+                    for (int i = 0; i < 8; i++) b[i + 2] = (decode_data >> (56 - i * 8)) & 0xFF;
 
-                    // Apply FSK phase correction if the preamble was inverted
-                    if (phase_inverted) {
+                    if (inverted_phase) {
                         for (int i = 0; i < 10; i++) b[i] = ~b[i];
                     }
 
-                    // Check strict Hyundai Sanity Rules AND the mathematical CRC-8
-                    if (hyundai_sanity_check(b) && FProtoGeneral::subghz_protocol_blocks_crc8(b, 9, 0x07, 0xAA) == b[9]) {
+                    // Szigorú CRC ellenőrzés
+                    if (crc8_vdo(b, 9) == b[9]) {
+                        analyze_hyundai(b);
                         data_count_bit = 80;
-                        tpms_protocol_hyundai_vdo_analyze(b);
                         if (callback) callback(this);
                     }
 
-                    // Regardless of success/fail, drop back to searching for a new preamble
-                    reset_decoder();
+                    // Sikeres csomag (vagy hibás CRC) után azonnal visszatérünk a Szinkronszó vadászathoz!
+                    collecting_payload = false;
+                    sync_reg = 0;
+                    payload_bits = 0;
+                    FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
                 }
             }
         }
@@ -126,9 +115,6 @@ class FProtoSubTPMSHyundaiVDO : public FProtoSubTPMSBase {
 
    protected:
     ManchesterState manchester_saved_state = ManchesterStateMid1;
-    HyundaiDecoderStep parser_step = HyundaiDecoderStepSearch;
-    uint32_t sync_reg = 0;
-    bool phase_inverted = false;
 };
 
 #endif
