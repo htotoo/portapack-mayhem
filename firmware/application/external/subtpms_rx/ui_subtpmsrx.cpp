@@ -190,6 +190,10 @@ const char* SubTPMSView::getSensorTypeName(FPROTO_SUBTPMS_SENSOR type) {
             return "Citroen";
         case FPT_Elantra2012:
             return "Elantra 2012";
+        case FPT_Renault_0435R:
+            return "Renault 0435R";
+        case FPT_Toyota:
+            return "Toyota";
         case FPT_Invalid:
         default:
             return "Unknown";

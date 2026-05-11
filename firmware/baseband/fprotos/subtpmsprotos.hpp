@@ -20,6 +20,8 @@ So include here the .hpp, and add a new element to the protos vector in the cons
 #include "t-bmw.hpp"
 #include "t-citroen.hpp"
 #include "t-elantra2012.hpp"
+#include "t-renault_0435r.hpp"
+#include "t-toyota.hpp"
 
 #ifndef __FPROTO_PROTOLISTTPMS_H__
 #define __FPROTO_PROTOLISTTPMS_H__
@@ -33,17 +35,19 @@ class SubTPMSProtos : public FProtoListGeneral {
         protos[FPT_Schrader_EG53MA4] = new FProtoSubTPMSSchraderEG53MA4();
         protos[FPT_Schrader] = new FProtoSubTPMSSchrader();
         protos[FPT_Schrader_SMD3MA4] = new FProtoSubTPMSSchraderSMD3MA4();
-        protos[FPT_Ford] = new FProtoSubTPMSFord();
+        // protos[FPT_Ford] = new FProtoSubTPMSFord();
 
         protos[FPT_HyundaiVDO] = new FProtoSubTPMSHyundaiVDO();
-        protos[FPT_Abarth124] = new FProtoSubTPMSAbarth124();
-        protos[FPT_Q85] = nullptr;  // implemented in the prev
-        protos[FPT_Airpuxem] = new FProtoSubTPMSAirpuxem();
-        protos[FPT_AVE] = new FProtoSubTPMSAVE();
+        // protos[FPT_Abarth124] = new FProtoSubTPMSAbarth124();
+        // protos[FPT_Q85] = nullptr;  // implemented in the prev
+        // protos[FPT_Airpuxem] = new FProtoSubTPMSAirpuxem();
+        // protos[FPT_AVE] = new FProtoSubTPMSAVE();
         protos[FPT_BMW] = new FProtoSubTPMSBMW();
         protos[FPT_AUDI] = nullptr;  // in bmw
         protos[FPT_Citroen] = new FProtoSubTPMSCitroen();
-        protos[FPT_Elantra2012] = new FProtoSubTPMSElantra2012();
+        // protos[FPT_Elantra2012] = new FProtoSubTPMSElantra2012();
+        protos[FPT_Renault_0435R] = new FProtoSubTPMSRenault0435R();
+        protos[FPT_Toyota] = new FProtoSubTPMSToyota();
 
         for (uint8_t i = 0; i < FPT_COUNT; ++i) {
             if (protos[i] != NULL) protos[i]->setCallback(callbackTarget);
