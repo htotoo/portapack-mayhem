@@ -18,6 +18,8 @@ So include here the .hpp, and add a new element to the protos vector in the cons
 #include "t-airpuxem.hpp"
 #include "t-ave.hpp"
 #include "t-bmw.hpp"
+#include "t-citroen.hpp"
+#include "t-elantra2012.hpp"
 
 #ifndef __FPROTO_PROTOLISTTPMS_H__
 #define __FPROTO_PROTOLISTTPMS_H__
@@ -40,6 +42,8 @@ class SubTPMSProtos : public FProtoListGeneral {
         protos[FPT_AVE] = new FProtoSubTPMSAVE();
         protos[FPT_BMW] = new FProtoSubTPMSBMW();
         protos[FPT_AUDI] = nullptr;  // in bmw
+        protos[FPT_Citroen] = new FProtoSubTPMSCitroen();
+        protos[FPT_Elantra2012] = new FProtoSubTPMSElantra2012();
 
         for (uint8_t i = 0; i < FPT_COUNT; ++i) {
             if (protos[i] != NULL) protos[i]->setCallback(callbackTarget);

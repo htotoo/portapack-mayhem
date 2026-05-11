@@ -21,6 +21,8 @@ enum FPROTO_SUBTPMS_SENSOR : uint8_t {
     FPT_AVE = 9,
     FPT_BMW = 10,
     FPT_AUDI = 11,
+    FPT_Citroen = 12,
+    FPT_Elantra2012 = 13,
     FPT_COUNT
 };
 
