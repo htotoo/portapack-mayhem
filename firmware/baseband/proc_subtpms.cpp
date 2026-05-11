@@ -1,6 +1,22 @@
 /*
  * Copyright (C) 2026 HTotoo
- * (Standard PortaPack header)
+ *
+ * This file is part of PortaPack.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
  */
 
 #include "proc_subtpms.hpp"
@@ -18,7 +34,7 @@ void SubTPMSProcessor::execute(const buffer_c8_t& buffer) {
         int16_t re = decim_1_out.p[i].real();
         int16_t im = decim_1_out.p[i].imag();
 
-        // --- AM (OOK) DEMODULATION (Változatlan) ---
+        // AM (OOK) DEMODULATION
         if (modulation == 0) {
             uint32_t mag = ((uint32_t)re * (uint32_t)re) + ((uint32_t)im * (uint32_t)im);
             uint32_t am_mag = (mag >> 10);
@@ -88,9 +104,8 @@ void SubTPMSProcessor::execute(const buffer_c8_t& buffer) {
             }
         }
 
-        // --- FM (FSK) DEMODULATION (Tiszta, folyamatos adatfolyam) ---
+        // FM (FSK) DEMODULATION
         else if (modulation == 1) {
-            // 1. Megelőzzük a túlcsordulást az input leosztásával
             int16_t re_s = re >> 2;
             int16_t im_s = im >> 2;
 
@@ -98,18 +113,14 @@ void SubTPMSProcessor::execute(const buffer_c8_t& buffer) {
             fm_state.last_re_s = re_s;
             fm_state.last_im_s = im_s;
 
-            // 2. Szűrések
             fm_state.smoothed_discrim += (discrim - fm_state.smoothed_discrim) >> 2;
             fm_state.dc_offset += (fm_state.smoothed_discrim - fm_state.dc_offset) >> 11;
 
-            // 3. Automatikus kilengés (Deviáció) mérése
             int32_t deviation = std::abs(fm_state.smoothed_discrim - fm_state.dc_offset);
             fm_state.deviation_avg += (deviation - fm_state.deviation_avg) >> 6;
 
-            // A Hiszterézis dinamikusan a jel erejéhez igazodik (25%)
             int32_t hysteresis = fm_state.deviation_avg >> 2;
 
-            // 4. Zero-Crossing Slicing
             bool new_level = currentHiLow;
             if (fm_state.smoothed_discrim > fm_state.dc_offset + hysteresis) {
                 new_level = true;
@@ -117,7 +128,6 @@ void SubTPMSProcessor::execute(const buffer_c8_t& buffer) {
                 new_level = false;
             }
 
-            // 5. Folyamatos időtartam adagolás a Parsernek (mint az AM)
             if (new_level == currentHiLow && currentDuration < 30'000'000) {
                 currentDuration += nsPerDecSamp;
             } else {
