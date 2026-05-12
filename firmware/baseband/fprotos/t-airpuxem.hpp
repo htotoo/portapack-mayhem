@@ -63,6 +63,7 @@ class FProtoSubTPMSAirpuxem : public FProtoSubTPMSBase {
 
             // Wait until we have a full 84-bit frame to evaluate
             if (decode_count_bit >= min_count_bit_for_found) {
+                if (decode_data == 0ULL || decode_data == ~0ULL) return;
                 // The header sits exactly 80 bits back (bits 16-19 inside decode_data2)
                 uint8_t header = (decode_data2 >> 16) & 0x0F;
 
