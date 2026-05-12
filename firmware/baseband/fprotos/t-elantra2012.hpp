@@ -57,6 +57,7 @@ class FProtoSubTPMSElantra2012 : public FProtoSubTPMSBase {
             decode_count_bit++;
 
             if (decode_count_bit >= min_count_bit_for_found) {
+                if (decode_data == 0ULL || decode_data == ~(0ULL)) return;
                 uint8_t b[8];
                 uint8_t b_inv[8];
 

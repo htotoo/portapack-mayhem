@@ -100,6 +100,10 @@ class FProtoSubTPMSToyota : public FProtoSubTPMSBase {
 
         // Ha megvan a 72 bit, jöhet a validálás
         if (decode_count_bit >= min_count_bit_for_found) {
+            uint8_t p1 = ((((decode_data >> 24) & 0x7F) << 1) | (((decode_data >> 16) & 0xFF) >> 7));
+            uint8_t p2 = (decode_data & 0xFF) ^ 0xFF;
+
+            if (p1 != p2) return;
             uint8_t b[9], b_inv[9];
 
             b[0] = decode_data2 & 0xFF;
