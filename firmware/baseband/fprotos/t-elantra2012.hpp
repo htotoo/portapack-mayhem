@@ -17,12 +17,7 @@ class FProtoSubTPMSElantra2012 : public FProtoSubTPMSBase {
         uint8_t crc = 0x00;
         for (int i = 0; i < 8; i++) {
             crc ^= b[i];
-            for (int j = 0; j < 8; j++) {
-                if (crc & 0x80)
-                    crc = (crc << 1) ^ 0x07;
-                else
-                    crc <<= 1;
-            }
+            for (int j = 0; j < 8; j++) crc = (crc & 0x80) ? (crc << 1) ^ 0x07 : (crc << 1);
         }
         return (crc == 0x00);
     }
@@ -37,7 +32,6 @@ class FProtoSubTPMSElantra2012 : public FProtoSubTPMSBase {
 
     void feed(bool level, uint32_t duration) {
         ManchesterEvent event = ManchesterEventReset;
-
         uint32_t mid = (te_short + te_long) / 2;
 
         if (duration >= (te_short - te_delta) && duration <= mid) {
@@ -45,6 +39,32 @@ class FProtoSubTPMSElantra2012 : public FProtoSubTPMSBase {
         } else if (duration > mid && duration <= (te_long + te_delta)) {
             event = level ? ManchesterEventLongHigh : ManchesterEventLongLow;
         } else {
+            // END OF MESSAGE KIÉRTÉKELÉS
+            if (decode_count_bit >= 64) {
+                bool found = false;
+                for (int offset = 0; offset <= 4 && !found; offset++) {
+                    uint64_t d = decode_data >> offset;
+                    if (d == 0ULL || d == ~0ULL) continue;
+
+                    uint8_t b[8], b_inv[8];
+                    for (int i = 0; i < 8; i++) {
+                        b[i] = (d >> ((7 - i) * 8)) & 0xFF;
+                        b_inv[i] = ~b[i];
+                    }
+
+                    if (checksum_elantra(b)) {
+                        data_count_bit = 64;
+                        analyze_elantra(b);
+                        if (callback) callback(this);
+                        found = true;
+                    } else if (checksum_elantra(b_inv)) {
+                        data_count_bit = 64;
+                        analyze_elantra(b_inv);
+                        if (callback) callback(this);
+                        found = true;
+                    }
+                }
+            }
             FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
             decode_count_bit = 0;
             decode_data = 0;
@@ -55,35 +75,6 @@ class FProtoSubTPMSElantra2012 : public FProtoSubTPMSBase {
         if (FProtoGeneral::manchester_advance(manchester_saved_state, event, &manchester_saved_state, &bitstate)) {
             decode_data = (decode_data << 1) | bitstate;
             decode_count_bit++;
-
-            if (decode_count_bit >= min_count_bit_for_found) {
-                if (decode_data == 0ULL || decode_data == ~(0ULL)) return;
-                uint8_t b[8];
-                uint8_t b_inv[8];
-
-                for (int i = 0; i < 8; i++) {
-                    b[i] = (decode_data >> ((7 - i) * 8)) & 0xFF;
-                    b_inv[i] = ~b[i];
-                }
-
-                if (checksum_elantra(b)) {
-                    data_count_bit = 64;
-                    analyze_elantra(b);
-                    if (callback) callback(this);
-
-                    decode_count_bit = 0;
-                    decode_data = 0;
-                    FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
-                } else if (checksum_elantra(b_inv)) {
-                    data_count_bit = 64;
-                    analyze_elantra(b_inv);
-                    if (callback) callback(this);
-
-                    decode_count_bit = 0;
-                    decode_data = 0;
-                    FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
-                }
-            }
         }
     }
 

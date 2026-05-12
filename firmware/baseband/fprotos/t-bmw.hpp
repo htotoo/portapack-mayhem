@@ -8,6 +8,8 @@
 
 class FProtoSubTPMSBMW : public FProtoSubTPMSBase {
    public:
+    uint32_t decode_data2 = 0;
+
     FProtoSubTPMSBMW() {
         sensorType = FPT_BMW;
         te_short = 25;
@@ -16,23 +18,18 @@ class FProtoSubTPMSBMW : public FProtoSubTPMSBase {
         min_count_bit_for_found = 64;
     }
 
-    void tpms_protocol_bmw_analyze() {
-        uint8_t b[11] = {0};
-
-        if (saved_type == MODEL_AUDI) {
-            for (int i = 0; i < 8; i++) b[i] = (saved_data >> ((7 - i) * 8)) & 0xFF;
+    void tpms_protocol_bmw_analyze(uint8_t* b, int type) {
+        if (type == MODEL_AUDI) {
+            id = ((uint32_t)b[1] << 24) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 8) | b[4];
+            pressure = (float)b[5] * 0.0245f;
+            temperature = (float)b[6] - 52.0f;
             sensorType = FPT_AUDI;
-        } else if (saved_type == MODEL_BMW) {
-            b[0] = (saved_data2 >> 16) & 0xFF;
-            b[1] = (saved_data2 >> 8) & 0xFF;
-            b[2] = (saved_data2) & 0xFF;
-            for (int i = 0; i < 8; i++) b[3 + i] = (saved_data >> ((7 - i) * 8)) & 0xFF;
+        } else {
+            id = ((uint32_t)b[4] << 24) | ((uint32_t)b[5] << 16) | ((uint32_t)b[6] << 8) | b[7];
+            pressure = (float)b[8] * 0.0245f;
+            temperature = (float)b[9] - 52.0f;
             sensorType = FPT_BMW;
         }
-
-        id = ((uint32_t)b[1] << 24) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 8) | b[4];
-        pressure = (float)b[5] * 0.0245f;
-        temperature = (float)b[6] - 52.0f;
         battery = 0xFF;
     }
 
@@ -44,11 +41,60 @@ class FProtoSubTPMSBMW : public FProtoSubTPMSBase {
         } else if (DURATION_DIFF(duration, te_long) < te_delta) {
             event = level ? ManchesterEventLongHigh : ManchesterEventLongLow;
         } else {
-            if (packet_ready) {
-                data_count_bit = (saved_type == MODEL_BMW) ? 88 : 64;
-                tpms_protocol_bmw_analyze();
-                if (callback) callback(this);
-                packet_ready = false;
+            // END OF MESSAGE KIÉRTÉKELÉS
+            if (decode_count_bit >= 64) {
+                bool found = false;
+                for (int offset = 0; offset <= 4 && !found; offset++) {
+                    // 1. Audi Check (64 bit)
+                    uint64_t d = decode_data >> offset;
+                    if (d != 0ULL && d != ~0ULL) {
+                        uint8_t b[8], b_inv[8];
+                        for (int i = 0; i < 8; i++) {
+                            b[i] = (d >> ((7 - i) * 8)) & 0xFF;
+                            b_inv[i] = ~b[i];
+                        }
+                        if (FProtoGeneral::subghz_protocol_blocks_crc8(b, 7, 0x2F, 0xAA) == b[7]) {
+                            data_count_bit = 64;
+                            tpms_protocol_bmw_analyze(b, MODEL_AUDI);
+                            if (callback) callback(this);
+                            found = true;
+                        } else if (FProtoGeneral::subghz_protocol_blocks_crc8(b_inv, 7, 0x2F, 0xAA) == b_inv[7]) {
+                            data_count_bit = 64;
+                            tpms_protocol_bmw_analyze(b_inv, MODEL_AUDI);
+                            if (callback) callback(this);
+                            found = true;
+                        }
+                    }
+
+                    // 2. BMW Check (88 bit) - Csak ha nem talált Audit
+                    if (!found && decode_count_bit >= 88) {
+                        uint8_t b[11], b_inv[11];
+                        uint64_t d_hi = decode_data2;
+                        uint64_t d_lo = decode_data;
+                        if (offset > 0) {
+                            d_lo = (decode_data >> offset) | (decode_data2 << (64 - offset));
+                            d_hi = decode_data2 >> offset;
+                        }
+
+                        b[0] = (d_hi >> 16) & 0xFF;
+                        b[1] = (d_hi >> 8) & 0xFF;
+                        b[2] = d_hi & 0xFF;
+                        for (int i = 0; i < 8; i++) b[i + 3] = (d_lo >> ((7 - i) * 8)) & 0xFF;
+                        for (int i = 0; i < 11; i++) b_inv[i] = ~b[i];
+
+                        if (FProtoGeneral::subghz_protocol_blocks_crc8(b, 10, 0x2F, 0xAA) == b[10]) {
+                            data_count_bit = 88;
+                            tpms_protocol_bmw_analyze(b, MODEL_BMW);
+                            if (callback) callback(this);
+                            found = true;
+                        } else if (FProtoGeneral::subghz_protocol_blocks_crc8(b_inv, 10, 0x2F, 0xAA) == b_inv[10]) {
+                            data_count_bit = 88;
+                            tpms_protocol_bmw_analyze(b_inv, MODEL_BMW);
+                            if (callback) callback(this);
+                            found = true;
+                        }
+                    }
+                }
             }
             FProtoGeneral::manchester_advance(manchester_saved_state, ManchesterEventReset, &manchester_saved_state, NULL);
             decode_count_bit = 0;
@@ -62,63 +108,11 @@ class FProtoSubTPMSBMW : public FProtoSubTPMSBase {
             decode_data2 = (decode_data2 << 1) | ((decode_data >> 63) & 1);
             decode_data = (decode_data << 1) | bitstate;
             decode_count_bit++;
-
-            // ==========================================
-            // BMW FAST EXIT
-            // ==========================================
-            if (decode_data == 0ULL || decode_data == ~0ULL) return;
-
-            if (decode_count_bit >= 64) {
-                uint8_t b[8], b_inv[8];
-                for (int i = 0; i < 8; i++) {
-                    b[i] = (decode_data >> ((7 - i) * 8)) & 0xFF;
-                    b_inv[i] = ~b[i];
-                }
-                if (FProtoGeneral::subghz_protocol_blocks_crc8(b, 7, 0x2F, 0xAA) == b[7]) {
-                    saved_data = decode_data;
-                    saved_type = MODEL_AUDI;
-                    packet_ready = true;
-                } else if (FProtoGeneral::subghz_protocol_blocks_crc8(b_inv, 7, 0x2F, 0xAA) == b_inv[7]) {
-                    saved_data = ~decode_data;
-                    saved_type = MODEL_AUDI;
-                    packet_ready = true;
-                }
-            }
-
-            if (decode_count_bit >= 88) {
-                uint8_t b[11], b_inv[11];
-                b[0] = (decode_data2 >> 16) & 0xFF;
-                b[1] = (decode_data2 >> 8) & 0xFF;
-                b[2] = (decode_data2) & 0xFF;
-                b_inv[0] = ~b[0];
-                b_inv[1] = ~b[1];
-                b_inv[2] = ~b[2];
-                for (int i = 0; i < 8; i++) {
-                    b[i + 3] = (decode_data >> ((7 - i) * 8)) & 0xFF;
-                    b_inv[i + 3] = ~b[i + 3];
-                }
-
-                if (FProtoGeneral::subghz_protocol_blocks_crc8(b, 10, 0x2F, 0xAA) == b[10]) {
-                    saved_data = decode_data;
-                    saved_data2 = decode_data2;
-                    saved_type = MODEL_BMW;
-                    packet_ready = true;
-                } else if (FProtoGeneral::subghz_protocol_blocks_crc8(b_inv, 10, 0x2F, 0xAA) == b_inv[10]) {
-                    saved_data = ~decode_data;
-                    saved_data2 = ~decode_data2;
-                    saved_type = MODEL_BMW;
-                    packet_ready = true;
-                }
-            }
         }
     }
 
    protected:
     ManchesterState manchester_saved_state = ManchesterStateMid1;
-    uint64_t saved_data = 0;
-    uint64_t saved_data2 = 0;
-    int saved_type = 0;
-    bool packet_ready = false;
 };
 
 #endif

@@ -34,17 +34,17 @@ class SubTPMSProtos : public FProtoListGeneral {
         protos[FPT_Schrader_EG53MA4] = new FProtoSubTPMSSchraderEG53MA4();
         protos[FPT_Schrader] = new FProtoSubTPMSSchrader();
         protos[FPT_Schrader_SMD3MA4] = new FProtoSubTPMSSchraderSMD3MA4();
-        // protos[FPT_Ford] = new FProtoSubTPMSFord();
+        protos[FPT_Ford] = new FProtoSubTPMSFord();
 
         protos[FPT_HyundaiVDO] = new FProtoSubTPMS_VDO();
-        // protos[FPT_Abarth124] = new FProtoSubTPMSAbarth124();
-        // protos[FPT_Q85] = nullptr;  // implemented in the prev
-        // protos[FPT_Airpuxem] = new FProtoSubTPMSAirpuxem();
-        // protos[FPT_AVE] = new FProtoSubTPMSAVE();
+        protos[FPT_Abarth124] = new FProtoSubTPMSAbarth124();
+        protos[FPT_Q85] = nullptr;  // implemented in the prev
+        protos[FPT_Airpuxem] = new FProtoSubTPMSAirpuxem();
+        protos[FPT_AVE] = new FProtoSubTPMSAVE();
         protos[FPT_BMW] = new FProtoSubTPMSBMW();
         protos[FPT_AUDI] = nullptr;     // in bmw
         protos[FPT_Citroen] = nullptr;  // implemented in vdo
-        // protos[FPT_Elantra2012] = new FProtoSubTPMSElantra2012();
+        protos[FPT_Elantra2012] = new FProtoSubTPMSElantra2012();
         protos[FPT_Renault_0435R] = new FProtoSubTPMSRenault0435R();
         protos[FPT_Toyota] = new FProtoSubTPMSToyota();
 

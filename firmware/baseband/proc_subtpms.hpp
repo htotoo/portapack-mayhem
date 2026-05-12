@@ -52,6 +52,7 @@ class SubTPMSProcessor : public BasebandProcessor {
     uint32_t low_estimate = 100;
     uint32_t high_estimate = 12000;
     uint32_t min_high_level = 10;
+    uint32_t glitchDuration = 0;
     uint8_t numg = 0;
     size_t baseband_fs = 4'000'000;
     uint32_t nsPerDecSamp = 0;
