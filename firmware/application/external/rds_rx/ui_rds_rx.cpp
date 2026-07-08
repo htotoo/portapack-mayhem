@@ -8,7 +8,6 @@ using namespace portapack;
 
 namespace ui::external_app::rds_rx {
 
-// Európai PTY (Program Type) kódok hivatalos listája
 static const char* pty_names[32] = {
     "None", "News", "Affairs", "Info", "Sport", "Educate", "Drama", "Culture",
     "Science", "Varied", "Pop", "Rock", "Easy", "Light", "Classics", "Other M",
@@ -26,12 +25,11 @@ RdsRxView::RdsRxView(NavigationView& nav) : nav_{nav} {
     field_frequency.set_step(100000);
 
     receiver_model.set_modulation(ReceiverModel::Mode::WidebandFMAudio);
-    receiver_model.set_sampling_rate(3072000);  // 3.072 MHz a DSP láncnak
+    receiver_model.set_sampling_rate(3072000);
     receiver_model.set_baseband_bandwidth(1750000);
     receiver_model.set_squelch_level(0);
     receiver_model.enable();
 
-    // Pufferek űrítések inicializálása (Szóközökkel, nem nullákkal!)
     memset(ps_name, ' ', 8);
     ps_name[8] = '\0';
     memset(radio_text, ' ', 64);
@@ -48,24 +46,24 @@ void RdsRxView::on_data_rds(const RDSGroupMessage& msg) {
     uint16_t block_c = msg.block_c;
     uint16_t block_d = msg.block_d;
 
-    int valid_blocks = 4;  // Alapból feltételezzük, hogy tökéletes csomag
+    int valid_blocks = 4;
 
     if (msg.is_debug) {
         if (msg.debug_1 == 777)
-            valid_blocks = 2;  // Részleges A+B
+            valid_blocks = 2;  // A+B
         else if (msg.debug_1 == 888)
-            valid_blocks = 3;  // Részleges A+B+C
+            valid_blocks = 3;  // A+B+C
         else
-            return;  // Hagyományos debug (bits counted), most nem rajzoljuk ki
+            return;  // debug (bits counted)
     }
 
-    // --- 1. Blokk A: Program Identifier (Mindig érvényes, ha idáig eljutott) ---
+    // Blokk A: Program Identifier
     text_pi.set("PI: " + to_string_hex(block_a, 4));
 
     uint8_t group_type = 0;
     uint8_t group_version = 0;
 
-    // --- 2. Blokk B: Metadata (Érvényes 2, 3 és 4 blokknál is) ---
+    // Blokk B: Metadata
     if (valid_blocks >= 2) {
         group_type = (block_b >> 12) & 0x0F;
         group_version = (block_b >> 11) & 0x01;  // 0 = A, 1 = B
@@ -76,9 +74,9 @@ void RdsRxView::on_data_rds(const RDSGroupMessage& msg) {
         text_pty.set("PTY: " + to_string_dec_uint(pty) + " (" + pty_names[pty] + ")");
     }
 
-    // --- 3. Teljes Csomag (A, B, C, D) Payload Feldolgozás ---
+    // (A, B, C, D) Full payload  ---
     if (valid_blocks == 4) {
-        // PS (Rádió neve) - 0A és 0B
+        // PS (name) - 0A  0B
         if (group_type == 0) {
             uint8_t segment = block_b & 0x03;
             char c1 = (block_d >> 8) & 0xFF;
@@ -88,11 +86,11 @@ void RdsRxView::on_data_rds(const RDSGroupMessage& msg) {
             if (c2 >= 32 && c2 <= 126) ps_name[segment * 2 + 1] = c2;
             text_ps_name.set(ps_name);
         }
-        // RT (Rádiószöveg) - 2A és 2B
+        // RT (txt) - 2A  2B
         else if (group_type == 2) {
             uint8_t segment = block_b & 0x0F;
 
-            if (group_version == 0) {  // 2A Csoport
+            if (group_version == 0) {  // 2A group
                 if (!msg.is_c_prime) {
                     char c1 = (block_c >> 8) & 0xFF;
                     char c2 = block_c & 0xFF;
@@ -104,7 +102,7 @@ void RdsRxView::on_data_rds(const RDSGroupMessage& msg) {
                     if (c3 >= 32 && c3 <= 126) radio_text[segment * 4 + 2] = c3;
                     if (c4 >= 32 && c4 <= 126) radio_text[segment * 4 + 3] = c4;
                 }
-            } else {  // 2B Csoport
+            } else {  // 2B group
                 char c1 = (block_d >> 8) & 0xFF;
                 char c2 = block_d & 0xFF;
 
@@ -112,7 +110,7 @@ void RdsRxView::on_data_rds(const RDSGroupMessage& msg) {
                 if (c2 >= 32 && c2 <= 126) radio_text[segment * 2 + 1] = c2;
             }
 
-            // Rádiószöveg 3 sorba tördelése a kijelzőn
+            // RRadio text split into 3 lines on the display
             std::string rt_str(radio_text, 64);
             text_rt_1.set(rt_str.substr(0, 30));
             text_rt_2.set(rt_str.substr(30, 30));
@@ -120,8 +118,8 @@ void RdsRxView::on_data_rds(const RDSGroupMessage& msg) {
         }
     }
 
-    // --- 4. Diagnosztikai Konzol Kimenet (Mindig fut, ha van min. A+B) ---
-    // Megmutatja, mely blokkok sérültek (-), és mi volt a csoport típusa
+    // --- 4. Diagnostic Console Output (Always runs if at least A+B are valid) ---
+    // Shows which blocks were corrupted (-), and what the group type was
     std::string diag = "[" + to_string_hex(block_a, 4) + " ";
     diag += to_string_hex(block_b, 4) + " ";
     diag += (valid_blocks >= 3) ? to_string_hex(block_c, 4) + " " : "---- ";

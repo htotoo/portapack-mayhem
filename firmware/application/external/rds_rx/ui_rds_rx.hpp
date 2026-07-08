@@ -27,18 +27,15 @@ class RdsRxView : public View {
     RxRadioState radio_state_{};
     app_settings::SettingsManager settings_{"rx_rds", app_settings::Mode::RX};
 
-    // Standard rádió vevő elemek (Y = 0)
     RFAmpField field_rf_amp{{13 * 8, UI_POS_Y(0)}};
     LNAGainField field_lna{{15 * 8, UI_POS_Y(0)}};
     VGAGainField field_vga{{18 * 8, UI_POS_Y(0)}};
 
     RxFrequencyField field_frequency{{UI_POS_X(0), UI_POS_Y(0)}, nav_};
 
-    // RSSI és Channel a sarokban
     RSSI rssi{{UI_POS_X(21), 0, UI_POS_WIDTH_REMAINING(24), 4}};
     Channel channel{{UI_POS_X(21), 5, UI_POS_WIDTH_REMAINING(24), 4}};
 
-    // RDS Fix Adatmezők
     Text text_pi{{0, 2 * 16, 8 * 12, 16}, "PI: ----"};
     Text text_tp{{120, 2 * 16, 8 * 10, 16}, "TP: -"};
 
@@ -53,7 +50,6 @@ class RdsRxView : public View {
     Text text_rt_2{{0, 7 * 16, 240, 16}, ""};
     Text text_rt_3{{0, 8 * 16, 240, 16}, ""};
 
-    // Alul a terminál a nyers diagnosztikának
     Console console{{0, 9 * 16, screen_width, screen_height - (10 * 16)}};
 
     char ps_name[9] = "        ";
