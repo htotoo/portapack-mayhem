@@ -20,7 +20,6 @@ class RdsRxView : public View {
     ~RdsRxView();
     void focus() override;
 
-    // ÚJ: Ablak címe
     std::string title() const override { return "RDS RX"; };
 
    private:
@@ -28,24 +27,34 @@ class RdsRxView : public View {
     RxRadioState radio_state_{};
     app_settings::SettingsManager settings_{"rx_rds", app_settings::Mode::RX};
 
+    // Standard rádió vevő elemek (Y = 0)
     RFAmpField field_rf_amp{{13 * 8, UI_POS_Y(0)}};
     LNAGainField field_lna{{15 * 8, UI_POS_Y(0)}};
     VGAGainField field_vga{{18 * 8, UI_POS_Y(0)}};
-    RSSI rssi{{UI_POS_X(21), 0, UI_POS_WIDTH_REMAINING(24), 4}};
-    Channel channel{{UI_POS_X(21), 5, UI_POS_WIDTH_REMAINING(24), 4}};
 
     RxFrequencyField field_frequency{{UI_POS_X(0), UI_POS_Y(0)}, nav_};
 
-    Text text_pi{{0, 2 * 16, 120, 16}, "PI: ----"};
-    Text text_pty{{120, 2 * 16, 120, 16}, "PTY: --"};
+    // RSSI és Channel a sarokban
+    RSSI rssi{{UI_POS_X(21), 0, UI_POS_WIDTH_REMAINING(24), 4}};
+    Channel channel{{UI_POS_X(21), 5, UI_POS_WIDTH_REMAINING(24), 4}};
 
-    Text text_ps_label{{0, 3 * 16, 40, 16}, "PS:"};
-    Text text_ps_name{{40, 3 * 16, 200, 16}, "        "};
+    // RDS Fix Adatmezők
+    Text text_pi{{0, 2 * 16, 8 * 12, 16}, "PI: ----"};
+    Text text_tp{{120, 2 * 16, 8 * 10, 16}, "TP: -"};
 
-    // ÚJ: Debug sor a képernyőre
-    Text text_debug{{0, 4 * 16, 240, 16}, "Bits: 0, ST: 0"};
+    Text text_pty{{0, 3 * 16, 240, 16}, "PTY: --"};
 
-    Console console{{0, 5 * 16, screen_width, screen_height - (5 * 16)}};
+    Text text_ps_label{{0, 4 * 16, 8 * 4, 16}, "PS: "};
+    Text text_ps_name{{8 * 4, 4 * 16, 8 * 10, 16}, "        "};
+
+    Text text_rt_label{{0, 5 * 16, 240, 16}, "Radio Text:"};
+    // A 64 karakteres RT tördelve (Soronként maximum 30 karakter fér el)
+    Text text_rt_1{{0, 6 * 16, 240, 16}, ""};
+    Text text_rt_2{{0, 7 * 16, 240, 16}, ""};
+    Text text_rt_3{{0, 8 * 16, 240, 16}, ""};
+
+    // Alul a terminál a nyers diagnosztikának
+    Console console{{0, 9 * 16, screen_width, screen_height - (10 * 16)}};
 
     char ps_name[9] = "        ";
     char radio_text[65] = {0};

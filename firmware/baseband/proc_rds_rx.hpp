@@ -26,7 +26,6 @@ class RDSProcessor : public BasebandProcessor {
     std::array<complex16_t, 512> dst_0{};
     const buffer_c16_t dst_buffer_0{dst_0.data(), dst_0.size()};
 
-    // A GNURadio-hoz hasonlóan Float demodulátor, hogy ne legyen fázis-ugrás a zajban!
     std::array<float, 512> mpx_audio{};
     const buffer_f32_t mpx_buffer{mpx_audio.data(), mpx_audio.size()};
 
@@ -47,8 +46,8 @@ class RDSProcessor : public BasebandProcessor {
 
     float costas_phase{0.0f};
     float costas_freq{0.0f};
-    static constexpr float costas_alpha = 0.02f;
-    static constexpr float costas_beta = 0.0001f;
+    static constexpr float costas_alpha = 0.005f;
+    static constexpr float costas_beta = 0.00001f;
 
     clock_recovery::ClockRecovery<clock_recovery::FixedErrorFilter> clock_recovery{
         rds_fs,
@@ -57,6 +56,7 @@ class RDSProcessor : public BasebandProcessor {
         [this](const float symbol) { this->consume_symbol(symbol); }};
 
     bool biphase_clock{false};
+    uint8_t first_half_sym{0};
     uint8_t prev_sym{0};
 
     enum class SyncState { UNSYNCED = 0,
@@ -76,7 +76,6 @@ class RDSProcessor : public BasebandProcessor {
     uint16_t block_d{0};
     bool is_c_prime{false};
 
-    // A hivatalos RDS Offset szavak!
     static constexpr uint16_t SYNDROME_A = 0x00FC;
     static constexpr uint16_t SYNDROME_B = 0x0198;
     static constexpr uint16_t SYNDROME_C = 0x0168;
