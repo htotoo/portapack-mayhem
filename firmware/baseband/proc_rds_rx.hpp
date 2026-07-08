@@ -48,6 +48,7 @@ class RDSProcessor : public BasebandProcessor {
     float costas_freq{0.0f};
     static constexpr float costas_alpha = 0.005f;
     static constexpr float costas_beta = 0.00001f;
+    uint32_t unsynced_bits{0};
 
     clock_recovery::ClockRecovery<clock_recovery::FixedErrorFilter> clock_recovery{
         rds_fs,
