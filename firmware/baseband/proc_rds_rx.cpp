@@ -3,79 +3,96 @@
 #include "sine_table_int8.hpp"
 #include "dsp_fir_taps.hpp"
 #include "event_m4.hpp"
+#include <cmath>
 
 RDSProcessor::RDSProcessor() {
     decim_0.configure(taps_200k_wfm_decim_0.taps);
     demod_fm.configure(mpx_fs, 75000);
+    decim_1.configure(taps_11k0_decim_1.taps);
 
     nco_inc = (57000ULL * 4294967296ULL) / mpx_fs;
     baseband_thread.start();
 }
 
 void RDSProcessor::execute(const buffer_c8_t& buffer) {
-    const auto decim_0_out = decim_0.execute(buffer, dst_buffer);
+    const auto decim_0_out = decim_0.execute(buffer, dst_buffer_0);
     const auto mpx_out = demod_fm.execute(decim_0_out, mpx_buffer);
     feed_channel_stats(decim_0_out);
 
     for (size_t i = 0; i < mpx_out.count; i++) {
-        int16_t sample = mpx_out.p[i];
+        float sample = mpx_out.p[i];
 
         uint8_t phase_idx = (nco_phase >> 24) & 0xFF;
         uint8_t cos_idx = (phase_idx + 64) & 0xFF;
 
-        float i_mixed = (sample * sine_table_i8[cos_idx]) / 128.0f;
-        float q_mixed = (sample * sine_table_i8[phase_idx]) / 128.0f;
+        mixed[i] = {
+            (int16_t)(sample * 32000.0f * sine_table_i8[cos_idx] / 128.0f),
+            (int16_t)(sample * 32000.0f * sine_table_i8[phase_idx] / 128.0f)};
+        nco_phase += nco_inc;
+    }
 
-        // KASZKÁDOLT IIR SZŰRŐ: Brutálisan levágja a sztereó hangot!
-        // 1. A szűrőt kicsit kinyitjuk (0.05f-ről 0.1f-re),
-        // hogy a 2.4 kHz széles RDS jel garantáltan ne tompuljon el
-        i_f1 += 0.1f * (i_mixed - i_f1);
-        q_f1 += 0.1f * (q_mixed - q_f1);
-        i_f2 += 0.1f * (i_f1 - i_f2);
-        q_f2 += 0.1f * (q_f1 - q_f2);
+    const buffer_c16_t mixed_buf_view{mixed.data(), mpx_out.count};
+    const auto rds_out = decim_1.execute(mixed_buf_view, dst_buffer_1);
 
-        // 2. NORMALIZÁLÁS JAVÍTÁSA: 8000 helyett 1000-rel osztunk!
-        // Így a jelszint felmegy a tökéletes ~0.9-es értékre, a hurok azonnal rázár.
-        float i_norm = i_f2 / 1000.0f;
-        float q_norm = q_f2 / 1000.0f;
+    for (size_t i = 0; i < rds_out.count; i++) {
+        float i_sample = rds_out.p[i].real() / 5000.0f;
+        float q_sample = rds_out.p[i].imag() / 5000.0f;
 
-        float phase_err = (i_norm > 0.0f ? 1.0f : -1.0f) * q_norm;
+        float alpha = 0.5f;
+        i_f1 += alpha * (i_sample - i_f1);
+        q_f1 += alpha * (q_sample - q_f1);
+        i_f2 += alpha * (i_f1 - i_f2);
+        q_f2 += alpha * (q_f1 - q_f2);
+        i_f3 += alpha * (i_f2 - i_f3);
+        q_f3 += alpha * (q_f2 - q_f3);
+
+        float i_rot = i_f3 * std::cos(-costas_phase) - q_f3 * std::sin(-costas_phase);
+        float q_rot = i_f3 * std::sin(-costas_phase) + q_f3 * std::cos(-costas_phase);
+
+        float phase_err = (i_rot > 0.0f ? 1.0f : -1.0f) * q_rot;
 
         costas_freq += costas_beta * phase_err;
-        float phase_adj = (costas_alpha * phase_err) + costas_freq;
+        costas_phase += (costas_alpha * phase_err) + costas_freq;
 
-        nco_phase += nco_inc + (int32_t)(phase_adj * 683565275.0f);
+        if (costas_phase > M_PI)
+            costas_phase -= 2.0f * M_PI;
+        else if (costas_phase < -M_PI)
+            costas_phase += 2.0f * M_PI;
 
-        clock_recovery(i_norm);
+        clock_recovery(i_rot);
     }
 }
 
 void RDSProcessor::consume_symbol(const float raw_symbol) {
-    uint8_t current_symbol = (raw_symbol > 0.0f) ? 1 : 0;
+    uint8_t sym = (raw_symbol > 0.0f) ? 1 : 0;
 
-    symbol_count++;
-    if (symbol_count % 2375 == 0) {
-        uint16_t current_syndrome = calc_syndrome(bit_history & 0x03FFFFFF);
-        uint32_t debug_val2 = (uint32_t)current_syndrome | ((uint32_t)sync_state << 16);
-        RDSGroupMessage dbg_msg{0, 0, 0, 0, false, true, symbol_count, debug_val2};
-        shared_memory.application_queue.push(dbg_msg);
+    // Zseniális Automata Fázis-Igazítás: Ha két szimbólum megegyezik, az BIZTOSAN a bithatár!
+    if (sym == prev_sym) {
+        biphase_clock = true;
+    } else {
+        biphase_clock = !biphase_clock;
     }
 
-    // A ZSENIÁLIS BIPHASE DEKÓDER: Csak egy flip-flop!
-    biphase_flip = !biphase_flip;
-
-    if (biphase_flip) {
-        // Differenciális NRZI dekódolás minden 2. szimbólumon
-        uint8_t decoded_bit = current_symbol ^ last_diff_bit;
-        last_diff_bit = current_symbol;
-
-        process_bit(decoded_bit);
+    if (biphase_clock) {
+        // Differenciális dekódolás (Különbözik = 0, Megegyezik = 1) - Immunis a polaritásra!
+        uint8_t bit = (sym == prev_sym) ? 1 : 0;
+        process_bit(bit);
     }
+    prev_sym = sym;
 }
 
 void RDSProcessor::process_bit(uint8_t bit) {
     bit_history = (bit_history << 1) | (bit & 0x01);
     bits_counted++;
+    total_bits++;
+
+    // DEBUG KÜLDÉS ~500 bitenként
+    if (total_bits % 500 == 0) {
+        uint16_t current_syndrome = calc_syndrome(bit_history & 0x03FFFFFF);
+        uint32_t debug_val2 = (uint32_t)current_syndrome | ((uint32_t)sync_state << 16);
+        RDSGroupMessage dbg_msg{0, 0, 0, 0, false, true, total_bits, debug_val2};
+        shared_memory.application_queue.push(dbg_msg);
+    }
 
     if (sync_state == SyncState::UNSYNCED) {
         if (calc_syndrome(bit_history & 0x03FFFFFF) == SYNDROME_A) {
@@ -98,6 +115,7 @@ void RDSProcessor::process_bit(uint8_t bit) {
             } else if (sync_state == SyncState::EXPECT_D && syndrome == SYNDROME_D) {
                 block_d = data;
 
+                // TÖKÉLETES CSOMAG FELKÜLDÉSE
                 RDSGroupMessage msg{block_a, block_b, block_c, block_d, is_c_prime, false, 0, 0};
                 shared_memory.application_queue.push(msg);
 
@@ -106,6 +124,15 @@ void RDSProcessor::process_bit(uint8_t bit) {
                 block_a = data;
                 sync_state = SyncState::EXPECT_B;
             } else {
+                // RÉSZLEGES CSOMAGOK FELKÜLDÉSE A KONZOLNAK ZAJ ESETÉN
+                if (sync_state == SyncState::EXPECT_C) {
+                    RDSGroupMessage dbg_msg{block_a, block_b, 0, 0, false, true, 777, 0};
+                    shared_memory.application_queue.push(dbg_msg);
+                } else if (sync_state == SyncState::EXPECT_D) {
+                    RDSGroupMessage dbg_msg{block_a, block_b, block_c, 0, false, true, 888, 0};
+                    shared_memory.application_queue.push(dbg_msg);
+                }
+
                 sync_state = SyncState::UNSYNCED;
             }
             bits_counted = 0;
@@ -113,12 +140,16 @@ void RDSProcessor::process_bit(uint8_t bit) {
     }
 }
 
+// A Hivatalos RDS LFSR! (Az MSB XOR logikával, hogy a maradék maga az Offset szó legyen)
 uint16_t RDSProcessor::calc_syndrome(uint32_t vec) {
     uint32_t reg = 0;
     for (int i = 25; i >= 0; i--) {
-        uint8_t reg_out = (reg >> 9) & 1;
-        reg = ((reg << 1) & 0x3FF) | ((vec >> i) & 1);
-        if (reg_out) reg ^= 0x1B9;
+        uint8_t bit = (vec >> i) & 1;
+        uint8_t reg_msb = (reg >> 9) & 1;
+        reg = (reg << 1) & 0x3FF;
+        if (bit != reg_msb) {
+            reg ^= 0x1B9;
+        }
     }
     return reg;
 }

@@ -38,10 +38,19 @@ void RdsRxView::focus() {
 
 void RdsRxView::on_data_rds(const RDSGroupMessage& msg) {
     if (msg.is_debug) {
+        if (msg.debug_1 == 777) {
+            console.writeln("Partial (A+B): PI=" + to_string_hex(msg.block_a, 4) + " B=" + to_string_hex(msg.block_b, 4));
+            return;
+        } else if (msg.debug_1 == 888) {
+            console.writeln("Partial (A+B+C): PI=" + to_string_hex(msg.block_a, 4) + " C=" + to_string_hex(msg.block_c, 4));
+            return;
+        }
+
+        // Normál debug statisztika
         uint8_t state = (msg.debug_2 >> 16) & 0xFF;
         uint16_t syndrome = msg.debug_2 & 0xFFFF;
         text_debug.set("B:" + to_string_dec_uint(msg.debug_1) + " S:" + to_string_dec_uint(state) + " SYN:" + to_string_hex(syndrome, 4));
-        return;  // Ha debug üzenet volt, kilépünk, nincs adat
+        return;
     }
     // group_count++;
 
