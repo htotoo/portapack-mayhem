@@ -180,6 +180,8 @@ class Message {
         SpecAnCaptured = 121,
         SpecAnSlice = 122,
         WMBusPacketMessageID = 123,
+        WidebandCatchConfig = 124,
+        WidebandCatchStatus = 125,
         MAX
     };
 
@@ -2267,4 +2269,45 @@ struct WMBusPacketMessage : public Message {
     uint16_t length = 0;
     uint8_t data[500] = {0};
 };
+
+struct WidebandCatchConfigMessage : public Message {
+    constexpr WidebandCatchConfigMessage(
+        uint8_t mod_type,
+        uint16_t threshold,
+        uint8_t min_bins,
+        uint8_t max_bins,
+        uint16_t squelch_hold_ms,
+        const std::array<uint8_t, 32>& ignore_mask) : Message{ID::WidebandCatchConfig},
+                                                      mod_type(mod_type),
+                                                      threshold(threshold),
+                                                      min_bins(min_bins),
+                                                      max_bins(max_bins),
+                                                      squelch_hold_ms(squelch_hold_ms),
+                                                      ignore_mask(ignore_mask) {}
+
+    uint8_t mod_type;
+    uint16_t threshold;
+    uint8_t min_bins;
+    uint8_t max_bins;
+    uint16_t squelch_hold_ms;
+    std::array<uint8_t, 32> ignore_mask{};
+};
+
+struct WidebandCatchStatusMessage : public Message {
+    constexpr WidebandCatchStatusMessage(
+        bool locked,
+        int32_t freq_offset_hz,
+        uint16_t signal_level,
+        uint8_t signal_width_bins) : Message{ID::WidebandCatchStatus},
+                                     locked(locked),
+                                     freq_offset_hz(freq_offset_hz),
+                                     signal_level(signal_level),
+                                     signal_width_bins(signal_width_bins) {}
+
+    bool locked;
+    int32_t freq_offset_hz;
+    uint16_t signal_level;
+    uint8_t signal_width_bins;
+};
+
 #endif /*__MESSAGE_H__*/

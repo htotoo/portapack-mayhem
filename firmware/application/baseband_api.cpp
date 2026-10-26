@@ -477,6 +477,10 @@ void set_wmbus_config(uint8_t mode) {
     send_message(&message);
 }
 
+void set_wideband_catch_config(WidebandCatchConfigMessage& message) {
+    send_message(&message);
+}
+
 static bool baseband_image_running = false;
 static bool rx_fs4_supported = false;
 

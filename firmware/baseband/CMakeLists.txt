@@ -582,6 +582,14 @@ if(FLASH_TIER GREATER_EQUAL 2)
 endif()
 
 
+### Wideband catch
+
+set(MODE_CPPSRC
+	proc_wideband_catch.cpp
+)
+DeclareTargets(PWBC wideband_catch)
+
+
 ### VOR TX
 
 set(MODE_CPPSRC

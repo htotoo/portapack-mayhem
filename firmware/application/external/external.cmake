@@ -429,6 +429,10 @@ set(EXTCPPSRC
 	#wmbus
 	external/wmbus_rx/main.cpp
 	external/wmbus_rx/ui_wmbus_rx.cpp
+
+	#wideband_catch
+	external/wideband_catch/main.cpp
+	external/wideband_catch/wideband_catch_app.cpp
 )
 
 set(EXTAPPLIST
@@ -533,5 +537,6 @@ set(EXTAPPLIST
 	sdusb
   	rds_rx
 	wmbus_rx
+	wideband_catch
 )
 
